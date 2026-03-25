@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英文新聞閱讀練習產生器</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=Noto+Serif+TC:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #f5f0e8;
+    --cream: #ede7d6;
+    --accent: #b5451b;
+    --gold: #c9962a;
+    --muted: #7a6e5f;
+    --correct: #2d6a4f;
+    --wrong: #9b2226;
+    --border: #c8bfaa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Serif 4', 'Noto Serif TC', serif;
+    min-height: 100vh;
+    font-size: 16px;
+  }
+
+  /* ── MASTHEAD ── */
+  .masthead {
+    border-bottom: 3px double var(--ink);
+    padding: 14px 16px 12px;
+    text-align: center;
+    background: var(--paper);
+    position: relative;
+  }
+  .masthead::before {
+    content: '';
+    display: block;
+    border-top: 1px solid var(--ink);
+    margin-bottom: 8px;
+  }
+  .masthead-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.5rem, 6vw, 2.4rem);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .masthead-sub {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+    font-family: 'Source Serif 4', serif;
+  }
+  .masthead-rule {
+    border: none;
+    border-top: 1px solid var(--ink);
+    margin-top: 10px;
+  }
+  .masthead-actions {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 6px;
+  }
+  .masthead-btn {
+    padding: 5px 10px;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Source Serif 4', serif;
+    white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .masthead-btn:hover { background: var(--cream); color: var(--ink); }
+  .masthead-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* ── LAYOUT ── */
+  .page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px 14px 80px;
+  }
+
+  /* ── STEP INDICATOR ── */
+  .steps {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'Source Serif 4', serif;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .steps::-webkit-scrollbar { display: none; }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    background: var(--cream);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .step.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .step.done { background: var(--correct); color: white; border-color: var(--correct); }
+  .step-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .step-connector { width: 16px; height: 1px; background: var(--border); flex-shrink: 0; }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+  }
+
+  /* ── API SETTINGS ── */
+  .api-settings {
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    background: var(--cream);
+  }
+  .api-settings-toggle {
+    padding: 10px 14px;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none;
+    min-height: 44px;
+  }
+  .api-settings-toggle:hover { color: var(--ink); }
+  .api-toggle-icon { font-size: 0.6rem; transition: transform 0.2s; }
+  .api-toggle-icon.open { transform: rotate(180deg); }
+  .api-settings-body {
+    display: none;
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--border);
+    background: white;
+  }
+  .api-settings-body.open { display: block; }
+  .api-key-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .api-key-row input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    font-family: 'Source Serif 4', monospace;
+    font-size: 0.8rem;
+    color: var(--ink);
+    background: white;
+    outline: none;
+    min-height: 44px;
+  }
+  .api-key-row input:focus { border-color: var(--ink); }
+  .btn-save-key {
+    padding: 9px 14px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    font-family: 'Source Serif 4', serif;
+    font-size: 0.78rem;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 44px;
+  }
+  .api-key-status {
+    margin-top: 8px;
+    font-size: 0.72rem;
+    font-family: 'Noto Serif TC', serif;
+    color: var(--muted);
+  }
+  .api-key-status.ok { color: var(--correct); }
+  .api-key-hint {
+    margin-top: 6px;
+    font-size: 0.68rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    line-height: 1.5;
+  }
+
+  /* ── INPUT PANEL ── */
+  #input-panel { display: grid; gap: 14px; }
+
+  .article-box {
+    border: 1px solid var(--border);
+    background: white;
+    box-shadow: 2px 2px 0 var(--border);
+  }
+  .article-box-header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 9px 14px;
+    font-size: 0.65rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .char-count {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    color: var(--gold);
+  }
+  textarea {
+    width: 100%;
+    min-height: 180px;
+    padding: 14px;
+    border: none;
+    outline: none;
+    font-family: 'Source Serif 4', serif;
+    font-size: 0.93rem;
+    line-height: 1.75;
+    resize: vertical;
+    background: white;
+    color: var(--ink);
+  }
+  textarea::placeholder { color: #b0a898; font-style: italic; }
+
+  .options-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .opt-group-wide { grid-column: span 2; }
+  .opt-group { }
+  .opt-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 5px;
+    display: block;
+  }
+  select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    background: white;
+    font-family: 'Source Serif 4', serif;
+    font-size: 0.86rem;
+    color: var(--ink);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a1208' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    min-height: 44px;
+    outline: none;
+  }
+
+  .btn-generate {
+    width: 100%;
+    padding: 15px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 52px;
+  }
+  .btn-generate:hover:not(:disabled) { background: #9a3615; }
+  .btn-generate:active:not(:disabled) { transform: scale(0.99); }
+  .btn-generate:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* ── LOADING ── */
+  #loading { display: none; text-align: center; padding: 60px 20px; }
+  .loading-press {
+    display: inline-block;
+    width: 52px; height: 52px;
+    border: 3px solid var(--ink);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    margin-bottom: 18px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── NAME PANEL ── */
+  #name-panel {
+    display: none;
+    border: 1px solid var(--border);
+    background: white;
+    padding: 28px 20px;
+    box-shadow: 2px 2px 0 var(--border);
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .name-panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .name-panel-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    margin-bottom: 20px;
+  }
+  .name-form {
+    display: flex;
+    gap: 10px;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .name-input {
+    flex: 1;
+    padding: 11px 14px;
+    border: 2px solid var(--ink);
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1rem;
+    color: var(--ink);
+    background: white;
+    outline: none;
+    min-height: 48px;
+    text-align: center;
+  }
+  .name-input:focus { border-color: var(--accent); }
+  .btn-start {
+    padding: 11px 18px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    min-height: 48px;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .btn-start:hover { background: #333; }
+
+  /* ── PRACTICE PANEL ── */
+  #practice-panel { display: none; }
+
+  .student-banner {
+    display: none;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 8px 14px;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    font-family: 'Source Serif 4', serif;
+    margin-bottom: 16px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .student-banner.show { display: flex; }
+  .student-name-display {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  .article-display {
+    border: 1px solid var(--border);
+    background: white;
+    padding: 20px 18px;
+    margin-bottom: 24px;
+    box-shadow: 2px 2px 0 var(--border);
+    position: relative;
+  }
+  .article-display::before {
+    content: 'ARTICLE';
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: white;
+    padding: 0 8px;
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+  }
+  .article-display p {
+    line-height: 1.85;
+    font-size: 0.93rem;
+    text-align: justify;
+  }
+
+  .vocab-strip {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    margin-top: 18px;
+  }
+  .vocab-strip-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .vocab-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .vocab-chip {
+    border: 1px solid var(--gold);
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .vocab-chip:hover, .vocab-chip.tapped { background: var(--gold); color: white; }
+  .vocab-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    z-index: 10;
+    font-style: italic;
+    min-width: 120px;
+    text-align: center;
+    font-family: 'Noto Serif TC', serif;
+    pointer-events: none;
+  }
+  .vocab-chip:hover .vocab-tooltip,
+  .vocab-chip.tapped .vocab-tooltip { display: block; }
+
+  /* Questions */
+  .questions-section { margin-bottom: 24px; }
+  .q-block {
+    border: 1px solid var(--border);
+    margin-bottom: 12px;
+    background: white;
+    box-shadow: 1px 1px 0 var(--border);
+    overflow: hidden;
+  }
+  .q-header {
+    background: var(--cream);
+    padding: 11px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+  }
+  .q-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+    min-width: 24px;
+    flex-shrink: 0;
+  }
+  .q-text { font-size: 0.9rem; line-height: 1.55; padding-top: 2px; }
+  .q-options { padding: 10px 14px; display: grid; gap: 8px; }
+  .q-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.86rem;
+    line-height: 1.4;
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .q-option:hover { background: var(--cream); border-color: var(--ink); }
+  .q-option:active { background: var(--cream); }
+  .q-option.selected { border-color: var(--ink); background: var(--cream); }
+  .q-option.correct { background: #d8f3dc; border-color: var(--correct); color: var(--correct); }
+  .q-option.wrong { background: #fce4e4; border-color: var(--wrong); color: var(--wrong); }
+  .opt-letter {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    min-width: 16px;
+    flex-shrink: 0;
+  }
+  .q-feedback {
+    display: none;
+    padding: 10px 14px;
+    background: var(--cream);
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    line-height: 1.6;
+  }
+  .q-feedback.show { display: block; }
+
+  /* Fill-in-blank */
+  .fill-blank {
+    padding: 14px;
+    font-size: 0.9rem;
+    line-height: 2.2;
+  }
+  .blank-input {
+    border: none;
+    border-bottom: 2px solid var(--ink);
+    background: transparent;
+    font-family: 'Source Serif 4', serif;
+    font-size: 0.9rem;
+    padding: 0 4px;
+    width: 110px;
+    text-align: center;
+    outline: none;
+    color: var(--ink);
+  }
+  .blank-input.correct { border-bottom-color: var(--correct); color: var(--correct); }
+  .blank-input.wrong { border-bottom-color: var(--wrong); color: var(--wrong); }
+
+  /* Discussion */
+  .discussion-q { padding: 14px; }
+  .discussion-q p {
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: var(--muted);
+    font-style: italic;
+    border-left: 3px solid var(--gold);
+    padding-left: 12px;
+    font-family: 'Noto Serif TC', serif;
+  }
+
+  /* Score bar */
+  .score-bar {
+    display: none;
+    border: 1px solid var(--border);
+    background: var(--cream);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    align-items: center;
+    gap: 16px;
+  }
+  .score-bar.show { display: flex; }
+  .score-circle {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+  .score-text { font-size: 0.86rem; line-height: 1.6; font-family: 'Noto Serif TC', serif; }
+  .score-label { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+
+  /* Action buttons */
+  .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 12px 20px;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-height: 46px;
+    flex: 1;
+    text-align: center;
+  }
+  .btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .btn-primary:hover { background: #333; }
+  .btn-secondary { background: transparent; color: var(--ink); border-color: var(--ink); }
+  .btn-secondary:hover { background: var(--cream); }
+  .btn-danger { background: transparent; color: var(--wrong); border-color: var(--wrong); }
+  .btn-danger:hover { background: #fce4e4; }
+
+  /* Error */
+  .error-msg {
+    display: none;
+    background: #fce4e4;
+    border: 1px solid var(--wrong);
+    padding: 12px 14px;
+    font-size: 0.83rem;
+    color: var(--wrong);
+    font-family: 'Noto Serif TC', serif;
+  }
+  .error-msg.show { display: block; }
+
+  /* ── HISTORY PANEL ── */
+  #history-panel { display: none; }
+  #history-panel.show { display: block; }
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .history-clear {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    color: var(--wrong);
+    cursor: pointer;
+    background: none;
+    border: 1px solid var(--wrong);
+    padding: 5px 10px;
+    font-family: 'Source Serif 4', serif;
+    min-height: 36px;
+  }
+  .history-empty {
+    text-align: center;
+    padding: 36px 20px;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.85rem;
+    border: 1px dashed var(--border);
+  }
+  .history-list { display: grid; gap: 10px; }
+  .history-record {
+    border: 1px solid var(--border);
+    background: white;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .hr-score-circle {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .hr-score-circle.high { background: var(--correct); color: white; }
+  .hr-score-circle.mid { background: var(--gold); color: white; }
+  .hr-score-circle.low { background: var(--wrong); color: white; }
+  .hr-info {}
+  .hr-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .hr-detail {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    margin-top: 3px;
+    line-height: 1.5;
+  }
+  .hr-date {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: right;
+    font-family: 'Source Serif 4', serif;
+    line-height: 1.5;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 20px;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.82rem;
+    z-index: 100;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── DISABLED OVERLAY ── */
+  .questions-disabled .q-option { pointer-events: none; opacity: 0.5; }
+  .questions-disabled .blank-input { pointer-events: none; opacity: 0.5; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-actions">
+    <button class="masthead-btn" id="history-toggle-btn" onclick="toggleHistory()">紀錄</button>
+  </div>
+  <div class="masthead-title">The English Press</div>
+  <div class="masthead-sub">新聞英文閱讀練習系統 &nbsp;·&nbsp; Powered by AI</div>
+  <hr class="masthead-rule">
+</header>
+
+<div class="page">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="step1"><span class="step-num">I</span><span>貼上文章</span></div>
+    <div class="step-connector"></div>
+    <div class="step" id="step2"><span class="step-num">II</span><span>AI 出題</span></div>
+    <div class="step-connector"></div>
+    <div class="step" id="step3"><span class="step-num">III</span><span>輸入姓名</span></div>
+    <div class="step-connector"></div>
+    <div class="step" id="step4"><span class="step-num">IV</span><span>作答檢核</span></div>
+  </div>
+
+  <!-- HISTORY PANEL -->
+  <div id="history-panel">
+    <div class="history-header">
+      <div class="section-label" style="margin-bottom:0">答題紀錄 — 本裝置暫存</div>
+      <button class="history-clear" onclick="clearHistory()">清除全部</button>
+    </div>
+    <div id="history-content"></div>
+  </div>
+
+  <!-- INPUT PANEL -->
+  <div id="input-panel">
+
+    <!-- Teacher API Settings -->
+    <div class="api-settings">
+      <div class="api-settings-toggle" onclick="toggleApiSettings()" id="api-toggle-btn">
+        <span>⚙ 教師設定 — Anthropic API Key</span>
+        <span class="api-toggle-icon" id="api-toggle-icon">▼</span>
+      </div>
+      <div class="api-settings-body" id="api-settings-body">
+        <span class="opt-label">輸入 API Key（儲存於瀏覽器，不會上傳）</span>
+        <div class="api-key-row">
+          <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off" />
+          <button class="btn-save-key" onclick="saveApiKey()">儲存</button>
+        </div>
+        <div class="api-key-status" id="api-key-status"></div>
+        <div class="api-key-hint">取得 API Key：console.anthropic.com → API Keys</div>
+      </div>
+    </div>
+
+    <div class="section-label">Step I — 貼上英文新聞文章</div>
+
+    <div class="article-box">
+      <div class="article-box-header">
+        <span>Article Text</span>
+        <span class="char-count" id="char-count">0 字</span>
+      </div>
+      <textarea id="article-input" placeholder="Paste your English news article here...&#10;&#10;（請將英文新聞文章貼入此處，建議長度 150–600 字）"></textarea>
+    </div>
+
+    <div class="options-row">
+      <div class="opt-group">
+        <label class="opt-label">學生程度</label>
+        <select id="level-select">
+          <option value="B1">B1（中級）</option>
+          <option value="B2" selected>B2（中高級）</option>
+          <option value="C1">C1（高級）</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <label class="opt-label">選擇題題數</label>
+        <select id="mcq-count">
+          <option value="3">3 題</option>
+          <option value="5" selected>5 題</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <label class="opt-label">填空題句數</label>
+        <select id="fill-count">
+          <option value="0">不含</option>
+          <option value="2" selected>2 句</option>
+          <option value="3">3 句</option>
+        </select>
+      </div>
+      <div class="opt-group">
+        <label class="opt-label">關鍵字彙數量</label>
+        <select id="vocab-count">
+          <option value="3">3 個</option>
+          <option value="5" selected>5 個</option>
+          <option value="8">8 個</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn-generate" id="generate-btn" onclick="generatePractice()">
+      ✦ 產生練習題
+    </button>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading">
+    <div class="loading-press"></div>
+    <div class="loading-text" id="loading-text">AI 正在分析文章、出題中⋯</div>
+  </div>
+
+  <!-- NAME PANEL -->
+  <div id="name-panel">
+    <div class="name-panel-title">請輸入姓名</div>
+    <div class="name-panel-sub">填寫後開始閱讀文章、作答練習題</div>
+    <div class="name-form">
+      <input class="name-input" type="text" id="student-name-input"
+             placeholder="學生姓名" maxlength="20"
+             onkeydown="if(event.key==='Enter') startPractice()" />
+      <button class="btn-start" onclick="startPractice()">開始作答</button>
+    </div>
+    <div class="error-msg" id="name-error" style="max-width:320px;margin:10px auto 0"></div>
+  </div>
+
+  <!-- PRACTICE PANEL -->
+  <div id="practice-panel">
+
+    <div class="student-banner" id="student-banner">
+      <span id="student-banner-name"></span>
+      <span id="student-banner-date" style="font-size:0.62rem;opacity:0.7"></span>
+    </div>
+
+    <div class="section-label">Article</div>
+    <div class="article-display">
+      <p id="article-display-text"></p>
+      <div class="vocab-strip" id="vocab-strip" style="display:none">
+        <div class="vocab-strip-label">Key Vocabulary — 點擊查看中文解釋</div>
+        <div class="vocab-list" id="vocab-list"></div>
+      </div>
+    </div>
+
+    <div class="score-bar" id="score-bar">
+      <div class="score-circle" id="score-circle">—</div>
+      <div class="score-text">
+        <div class="score-label" id="score-label">完成作答</div>
+        <div id="score-detail"></div>
+      </div>
+    </div>
+
+    <!-- MCQ Section -->
+    <div id="mcq-section" class="questions-section">
+      <div class="section-label">Reading Comprehension — 閱讀理解選擇題</div>
+      <div id="mcq-container"></div>
+    </div>
+
+    <!-- Fill-in Section -->
+    <div id="fill-section" class="questions-section" style="display:none">
+      <div class="section-label">Summary Fill-in-the-Blank — 摘要填空</div>
+      <div id="fill-container"></div>
+    </div>
+
+    <!-- Discussion Section -->
+    <div id="discussion-section" class="questions-section">
+      <div class="section-label">Discussion — 延伸討論問題</div>
+      <div id="discussion-container"></div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-primary" onclick="checkAnswers()">批改作答</button>
+      <button class="btn btn-secondary" onclick="resetAll()">重新出題</button>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Firebase Realtime Database（type="module" 獨立運作，失敗不影響主程式） -->
+<script type="module">
+  import { initializeApp }        from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
+  import { getDatabase, ref, push } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js';
+
+  const firebaseConfig = {
+    apiKey:            'AIzaSyAFDWrF_4YbBM_7mO7MRFHbcb5SUXnUphg',
+    authDomain:        'news-english-ef2e4.firebaseapp.com',
+    databaseURL:       'https://news-english-ef2e4-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId:         'news-english-ef2e4',
+    storageBucket:     'news-english-ef2e4.firebasestorage.app',
+    messagingSenderId: '1039973180615',
+    appId:             '1:1039973180615:web:dca063a42dbf9fb228cae2',
+    measurementId:     'G-1ELC7Y97MF'
+  };
+
+  let db = null;
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    console.info('[Firebase] Realtime Database 初始化成功');
+  } catch (e) {
+    console.warn('[Firebase] 初始化失敗，答題紀錄將只存本機：', e.message);
+  }
+
+  /**
+   * 儲存一筆答題 session 至 /sessions/{pushKey}
+   * @returns {Promise<boolean>} true = 成功；false = 失敗（已 catch，不會拋出）
+   */
+  window.fbSaveSession = async function(sessionData) {
+    if (!db) return false;
+    try {
+      await push(ref(db, 'sessions'), sessionData);
+      return true;
+    } catch (e) {
+      console.warn('[Firebase] 寫入失敗：', e.message);
+      return false;
+    }
+  };
+</script>
+
+<script>
+// ── STATE ──
+let practiceData = null;
+let answeredMCQ = {};
+let checked = false;
+let currentStudent = '';
+let currentArticleSnippet = '';
+let currentArticleTitle = '';
+let practiceStartTime = null;
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  initApiKey();
+  renderHistory(); // pre-render so panel is ready
+});
+
+// ── CHAR COUNT ──
+document.getElementById('article-input').addEventListener('input', function() {
+  document.getElementById('char-count').textContent = this.value.trim().length + ' 字';
+});
+
+// ── API KEY ──
+function initApiKey() {
+  const key = localStorage.getItem('ep_api_key') || '';
+  if (key) {
+    document.getElementById('api-key-input').value = key;
+    document.getElementById('api-key-status').textContent = '✓ 已儲存 API Key';
+    document.getElementById('api-key-status').className = 'api-key-status ok';
+  } else {
+    // Auto-open settings if no key
+    openApiSettings();
+  }
+}
+
+function toggleApiSettings() {
+  const body = document.getElementById('api-settings-body');
+  const icon = document.getElementById('api-toggle-icon');
+  const isOpen = body.classList.contains('open');
+  if (isOpen) {
+    body.classList.remove('open');
+    icon.classList.remove('open');
+  } else {
+    openApiSettings();
+  }
+}
+
+function openApiSettings() {
+  document.getElementById('api-settings-body').classList.add('open');
+  document.getElementById('api-toggle-icon').classList.add('open');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('sk-ant-')) {
+    document.getElementById('api-key-status').textContent = '⚠ 格式不符，API Key 應以 sk-ant- 開頭';
+    document.getElementById('api-key-status').className = 'api-key-status';
+    return;
+  }
+  localStorage.setItem('ep_api_key', key);
+  document.getElementById('api-key-status').textContent = '✓ 已儲存';
+  document.getElementById('api-key-status').className = 'api-key-status ok';
+  // Close panel
+  document.getElementById('api-settings-body').classList.remove('open');
+  document.getElementById('api-toggle-icon').classList.remove('open');
+  showToast('API Key 已儲存');
+}
+
+// ── HISTORY TOGGLE ──
+function toggleHistory() {
+  const panel = document.getElementById('history-panel');
+  const btn = document.getElementById('history-toggle-btn');
+  const isShowing = panel.classList.contains('show');
+  if (isShowing) {
+    panel.classList.remove('show');
+    btn.classList.remove('active');
+    // Show current main content
+    restoreMainView();
+  } else {
+    renderHistory();
+    panel.classList.add('show');
+    btn.classList.add('active');
+    // Hide main panels to avoid confusion
+    document.getElementById('input-panel').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('name-panel').style.display = 'none';
+    document.getElementById('practice-panel').style.display = 'none';
+  }
+}
+
+function restoreMainView() {
+  // Determine which panel should be visible
+  if (practiceData && checked) {
+    document.getElementById('practice-panel').style.display = 'block';
+  } else if (practiceData && !checked) {
+    document.getElementById('name-panel').style.display = currentStudent ? 'none' : 'block';
+    document.getElementById('practice-panel').style.display = currentStudent ? 'block' : 'none';
+  } else {
+    document.getElementById('input-panel').style.display = 'grid';
+  }
+}
+
+// ── HISTORY DATA ──
+function getRecords() {
+  try {
+    return JSON.parse(localStorage.getItem('ep_records') || '[]');
+  } catch(e) { return []; }
+}
+
+function saveRecord(name, pct, correct, total, level, articleSnippet) {
+  const records = getRecords();
+  const now = new Date();
+  records.unshift({
+    name,
+    pct,
+    correct,
+    total,
+    level,
+    article: articleSnippet,
+    date: now.toLocaleDateString('zh-TW', { month:'2-digit', day:'2-digit' }),
+    time: now.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' })
+  });
+  // Keep last 50 records
+  localStorage.setItem('ep_records', JSON.stringify(records.slice(0, 50)));
+}
+
+function clearHistory() {
+  if (!confirm('確定要清除所有答題紀錄嗎？')) return;
+  localStorage.removeItem('ep_records');
+  renderHistory();
+  showToast('紀錄已清除');
+}
+
+function renderHistory() {
+  const records = getRecords();
+  const content = document.getElementById('history-content');
+  if (!records.length) {
+    content.innerHTML = '<div class="history-empty">尚無答題紀錄<br><small>完成作答後會自動儲存在此</small></div>';
+    return;
+  }
+  content.innerHTML = `<div class="history-list">${records.map(r => {
+    const cls = r.pct >= 80 ? 'high' : r.pct >= 60 ? 'mid' : 'low';
+    return `<div class="history-record">
+      <div class="hr-score-circle ${cls}">${r.pct}%</div>
+      <div class="hr-info">
+        <div class="hr-name">${escHtml(r.name)}</div>
+        <div class="hr-detail">答對 ${r.correct}/${r.total} 題 &nbsp;·&nbsp; ${r.level}<br>${escHtml(r.article)}</div>
+      </div>
+      <div class="hr-date">${r.date}<br>${r.time}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── GENERATE ──
+async function generatePractice() {
+  const article = document.getElementById('article-input').value.trim();
+  if (article.length < 80) {
+    showError('請貼入至少 80 字的英文文章，才能產生練習題。');
+    return;
+  }
+  const apiKey = localStorage.getItem('ep_api_key') || '';
+  if (!apiKey) {
+    showError('請先在「教師設定」中輸入並儲存 Anthropic API Key。');
+    openApiSettings();
+    return;
+  }
+  clearError();
+
+  const level = document.getElementById('level-select').value;
+  const mcqCount = document.getElementById('mcq-count').value;
+  const fillCount = document.getElementById('fill-count').value;
+  const vocabCount = document.getElementById('vocab-count').value;
+  currentArticleSnippet = article.slice(0, 40).replace(/\n/g,' ') + (article.length > 40 ? '…' : '');
+  currentArticleTitle = (article.split('\n')[0].trim() || article).slice(0, 80);
+
+  setStep(2);
+  document.getElementById('input-panel').style.display = 'none';
+  document.getElementById('history-panel').classList.remove('show');
+  document.getElementById('history-toggle-btn').classList.remove('active');
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('practice-panel').style.display = 'none';
+  document.getElementById('name-panel').style.display = 'none';
+
+  const loadingMsgs = [
+    'AI 正在閱讀文章⋯',
+    '分析關鍵詞彙中⋯',
+    '命題、設計選項中⋯',
+    '整理中文說明⋯'
+  ];
+  let mi = 0;
+  const lt = document.getElementById('loading-text');
+  const loadInterval = setInterval(() => {
+    mi = (mi + 1) % loadingMsgs.length;
+    lt.textContent = loadingMsgs[mi];
+  }, 1800);
+
+  const prompt = `You are an English teacher's assistant helping create a reading comprehension practice worksheet in Traditional Chinese for ${level}-level students.
+
+Given the following English news article, generate a JSON object (and NOTHING ELSE, no markdown, no backticks) with this exact structure:
+
+{
+  "vocab": [
+    {"word": "example", "zh": "中文解釋（簡短）", "pos": "n./v./adj."}
+  ],
+  "mcq": [
+    {
+      "q": "Question text in English?",
+      "opts": ["A. ...", "B. ...", "C. ...", "D. ..."],
+      "ans": 0,
+      "explain": "中文解題說明：為什麼選這個答案"
+    }
+  ],
+  "fill": [
+    {
+      "sentence": "The article states that ___ is important for ___.",
+      "blanks": ["answer1", "answer2"],
+      "zh_hint": "中文提示：這句說的是什麼"
+    }
+  ],
+  "discussion": [
+    {"q": "Discussion question in English?", "zh": "中文提示：可以從哪些角度思考"}
+  ]
+}
+
+Rules:
+- vocab: pick exactly ${vocabCount} key words; "zh" max 10 Chinese characters
+- mcq: exactly ${mcqCount} questions; "ans" is 0-indexed; "explain" max 40 Chinese characters
+- fill: exactly ${fillCount} sentences; each blank is 1–3 words; "zh_hint" max 20 Chinese characters
+- discussion: exactly 2 questions; "zh" max 30 Chinese characters
+- Questions/options in English; zh fields in Traditional Chinese
+- Be concise. Output ONLY the JSON object, nothing else.
+
+Article:
+"""
+${article}
+"""`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+    clearInterval(loadInterval);
+
+    if (!response.ok || !data.content) {
+      const errMsg = data.error?.message || `HTTP ${response.status}`;
+      if (response.status === 401) throw new Error('API Key 無效，請重新檢查。');
+      if (response.status === 429) throw new Error('請求次數超限，請稍後再試。');
+      throw new Error(errMsg);
+    }
+
+    const raw = data.content.map(b => b.text || '').join('');
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI 未回傳有效的 JSON 格式');
+    practiceData = JSON.parse(jsonMatch[0]);
+
+    document.getElementById('loading').style.display = 'none';
+    renderArticle(article, practiceData);
+    showNamePanel();
+    setStep(3);
+
+  } catch (err) {
+    clearInterval(loadInterval);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('input-panel').style.display = 'grid';
+    setStep(1);
+    showError('出題失敗：' + err.message);
+  }
+}
+
+// ── NAME PANEL ──
+function showNamePanel() {
+  currentStudent = '';
+  document.getElementById('student-name-input').value = '';
+  document.getElementById('name-panel').style.display = 'block';
+  // Auto-focus name input
+  setTimeout(() => document.getElementById('student-name-input').focus(), 100);
+}
+
+function startPractice() {
+  const name = document.getElementById('student-name-input').value.trim();
+  if (!name) {
+    const err = document.getElementById('name-error');
+    err.textContent = '請輸入姓名後再開始作答。';
+    err.classList.add('show');
+    return;
+  }
+  document.getElementById('name-error').classList.remove('show');
+  currentStudent = name;
+  practiceStartTime = Date.now();
+
+  document.getElementById('name-panel').style.display = 'none';
+  showPracticePanel(name);
+}
+
+// ── RENDER ARTICLE (called before name entry) ──
+function renderArticle(article, data) {
+  document.getElementById('article-display-text').textContent = article;
+
+  // Vocab
+  if (data.vocab && data.vocab.length) {
+    document.getElementById('vocab-strip').style.display = 'block';
+    const vl = document.getElementById('vocab-list');
+    vl.innerHTML = data.vocab.map(v =>
+      `<div class="vocab-chip" onclick="tapVocab(this)">
+        ${escHtml(v.word)} <em style="font-size:0.68rem;color:var(--muted)">(${escHtml(v.pos)})</em>
+        <div class="vocab-tooltip">${escHtml(v.zh)}</div>
+      </div>`
+    ).join('');
+  }
+}
+
+// Touch-friendly vocab tap (mobile)
+function tapVocab(el) {
+  const wasActive = el.classList.contains('tapped');
+  document.querySelectorAll('.vocab-chip').forEach(c => c.classList.remove('tapped'));
+  if (!wasActive) el.classList.add('tapped');
+}
+
+// ── SHOW PRACTICE PANEL (after name entered) ──
+function showPracticePanel(name) {
+  const now = new Date();
+  document.getElementById('student-banner').classList.add('show');
+  document.getElementById('student-banner-name').innerHTML =
+    `學生：<span class="student-name-display">${escHtml(name)}</span>`;
+  document.getElementById('student-banner-date').textContent =
+    now.toLocaleDateString('zh-TW') + ' ' + now.toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'});
+
+  const fillCount = parseInt(document.getElementById('fill-count').value);
+  renderQuestions(practiceData, fillCount);
+
+  checked = false;
+  document.getElementById('score-bar').classList.remove('show');
+  document.getElementById('practice-panel').style.display = 'block';
+  setStep(4);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderQuestions(data, fillCount) {
+  // MCQ
+  answeredMCQ = {};
+  const mcqContainer = document.getElementById('mcq-container');
+  mcqContainer.innerHTML = '';
+  (data.mcq || []).forEach((q, qi) => {
+    const block = document.createElement('div');
+    block.className = 'q-block';
+    block.innerHTML = `
+      <div class="q-header">
+        <div class="q-num">${qi + 1}</div>
+        <div class="q-text">${escHtml(q.q)}</div>
+      </div>
+      <div class="q-options">
+        ${q.opts.map((opt, oi) =>
+          `<div class="q-option" onclick="selectMCQ(${qi},${oi})" id="opt-${qi}-${oi}">
+            <span class="opt-letter">${['A','B','C','D'][oi]}</span>
+            <span>${escHtml(opt.replace(/^[A-D]\.\s*/,''))}</span>
+          </div>`
+        ).join('')}
+      </div>
+      <div class="q-feedback" id="feedback-${qi}">💡 ${escHtml(q.explain)}</div>
+    `;
+    mcqContainer.appendChild(block);
+  });
+
+  // Fill-in
+  if (fillCount > 0 && data.fill && data.fill.length) {
+    document.getElementById('fill-section').style.display = 'block';
+    const fc = document.getElementById('fill-container');
+    fc.innerHTML = '';
+    data.fill.forEach((item, fi) => {
+      const block = document.createElement('div');
+      block.className = 'q-block';
+      let blankIdx = 0;
+      const sentenceHtml = item.sentence.replace(/___/g, () => {
+        const idx = blankIdx++;
+        return `<input class="blank-input" type="text" id="blank-${fi}-${idx}"
+                  placeholder="___" data-ans="${escHtml(item.blanks[idx] || '')}"
+                  autocomplete="off" autocorrect="off" spellcheck="false">`;
+      });
+      block.innerHTML = `
+        <div class="q-header">
+          <div class="q-num">${fi + 1}</div>
+          <div class="q-text" style="color:var(--muted);font-size:0.8rem;font-style:italic">${escHtml(item.zh_hint)}</div>
+        </div>
+        <div class="fill-blank">${sentenceHtml}</div>
+      `;
+      fc.appendChild(block);
+    });
+  } else {
+    document.getElementById('fill-section').style.display = 'none';
+  }
+
+  // Discussion
+  const dc = document.getElementById('discussion-container');
+  dc.innerHTML = '';
+  (data.discussion || []).forEach((item, di) => {
+    const block = document.createElement('div');
+    block.className = 'q-block';
+    block.innerHTML = `
+      <div class="q-header">
+        <div class="q-num">${di + 1}</div>
+        <div class="q-text">${escHtml(item.q)}</div>
+      </div>
+      <div class="discussion-q"><p>${escHtml(item.zh)}</p></div>
+    `;
+    dc.appendChild(block);
+  });
+}
+
+function selectMCQ(qi, oi) {
+  if (checked) return;
+  answeredMCQ[qi] = oi;
+  document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach(o => o.classList.remove('selected'));
+  document.getElementById(`opt-${qi}-${oi}`).classList.add('selected');
+}
+
+// ── CHECK ANSWERS ──
+function checkAnswers() {
+  if (!practiceData) return;
+  checked = true;
+  let correct = 0;
+  const total = practiceData.mcq.length;
+
+  // ── 批改前先收集填空原始答案（批改會覆蓋 input.value）──
+  const fillAnswers = [];
+  if (practiceData.fill) {
+    practiceData.fill.forEach((item, fi) => {
+      const rec = { sentence: item.sentence, answers: [], isCorrect: [] };
+      (item.blanks || []).forEach((ans, bi) => {
+        const inp = document.getElementById(`blank-${fi}-${bi}`);
+        const val = inp ? inp.value.trim() : '';
+        const norm = val.toLowerCase();
+        const expected = ans.toLowerCase();
+        rec.answers.push(val);
+        rec.isCorrect.push(norm === expected || norm.includes(expected) || expected.includes(norm));
+      });
+      fillAnswers.push(rec);
+    });
+  }
+
+  practiceData.mcq.forEach((q, qi) => {
+    const chosen = answeredMCQ[qi];
+    document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach((o, oi) => {
+      if (oi === q.ans) o.classList.add('correct');
+      else if (oi === chosen && chosen !== q.ans) o.classList.add('wrong');
+    });
+    document.getElementById(`feedback-${qi}`).classList.add('show');
+    if (chosen === q.ans) correct++;
+  });
+
+  // Fill-in check
+  if (practiceData.fill) {
+    practiceData.fill.forEach((item, fi) => {
+      (item.blanks || []).forEach((ans, bi) => {
+        const inp = document.getElementById(`blank-${fi}-${bi}`);
+        if (inp) {
+          const val = inp.value.trim().toLowerCase();
+          const expected = ans.toLowerCase();
+          inp.disabled = true;
+          if (val === expected || val.includes(expected) || expected.includes(val)) {
+            inp.classList.add('correct');
+          } else {
+            inp.classList.add('wrong');
+            inp.value = ans;
+          }
+        }
+      });
+    });
+  }
+
+  // Score display
+  const pct = Math.round((correct / total) * 100);
+  const sb = document.getElementById('score-bar');
+  sb.classList.add('show');
+  document.getElementById('score-circle').textContent = pct + '%';
+  document.getElementById('score-label').textContent =
+    pct >= 80 ? '🎉 表現優秀！' : pct >= 60 ? '👍 繼續加油！' : '📖 建議重讀文章';
+  document.getElementById('score-detail').innerHTML =
+    `<strong>${escHtml(currentStudent)}</strong> 答對 <strong>${correct} / ${total}</strong> 題`;
+  sb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // ── 儲存至 localStorage ──
+  const level = document.getElementById('level-select').value;
+  saveRecord(currentStudent, pct, correct, total, level, currentArticleSnippet);
+
+  // ── 儲存至 Firebase（失敗不影響作答） ──
+  const secondsSpent = practiceStartTime ? Math.round((Date.now() - practiceStartTime) / 1000) : 0;
+  const sessionData = {
+    studentName: currentStudent,
+    timestamp: new Date().toISOString(),
+    secondsSpent,
+    articleTitle: currentArticleTitle,
+    level,
+    score: pct,
+    correct,
+    total,
+    mcq: practiceData.mcq.map((q, qi) => ({
+      question: q.q,
+      studentAnswer: answeredMCQ[qi] !== undefined
+        ? q.opts[answeredMCQ[qi]].replace(/^[A-D]\.\s*/, '')
+        : '（未作答）',
+      correctAnswer: q.opts[q.ans].replace(/^[A-D]\.\s*/, ''),
+      isCorrect: answeredMCQ[qi] === q.ans
+    })),
+    fill: fillAnswers
+  };
+
+  if (typeof window.fbSaveSession === 'function') {
+    window.fbSaveSession(sessionData)
+      .then(ok => showToast(ok ? '答題紀錄已同步至雲端 ☁' : '紀錄已儲存（離線）'))
+      .catch(() => showToast('紀錄已儲存（離線）'));
+  } else {
+    showToast('答題紀錄已儲存');
+  }
+}
+
+// ── RESET ──
+function resetAll() {
+  practiceData = null;
+  answeredMCQ = {};
+  checked = false;
+  currentStudent = '';
+  practiceStartTime = null;
+  currentArticleTitle = '';
+  document.getElementById('practice-panel').style.display = 'none';
+  document.getElementById('name-panel').style.display = 'none';
+  document.getElementById('score-bar').classList.remove('show');
+  document.getElementById('student-banner').classList.remove('show');
+  document.getElementById('input-panel').style.display = 'grid';
+  document.getElementById('history-panel').classList.remove('show');
+  document.getElementById('history-toggle-btn').classList.remove('active');
+  setStep(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── HELPERS ──
+function setStep(n) {
+  [1,2,3,4].forEach(i => {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active','done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add('active');
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function clearError() { document.getElementById('error-msg').classList.remove('show'); }
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>

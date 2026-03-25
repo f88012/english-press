@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教師後台 — The English Press</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=Noto+Serif+TC:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #f5f0e8;
+    --cream: #ede7d6;
+    --accent: #b5451b;
+    --gold: #c9962a;
+    --muted: #7a6e5f;
+    --correct: #2d6a4f;
+    --wrong: #9b2226;
+    --border: #c8bfaa;
+    --warn: #c97a1a;
+    --warn-bg: #fdf3e7;
+    --warn-border: #e09040;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Serif 4', 'Noto Serif TC', serif;
+    min-height: 100vh;
+    font-size: 16px;
+  }
+
+  /* ── MASTHEAD ── */
+  .masthead {
+    border-bottom: 3px double var(--ink);
+    padding: 12px 14px 10px;
+    background: var(--paper);
+    position: relative;
+  }
+  .masthead::before {
+    content: '';
+    display: block;
+    border-top: 1px solid var(--ink);
+    margin-bottom: 8px;
+  }
+  .masthead-center { text-align: center; }
+  .masthead-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 2px 8px;
+    margin-bottom: 4px;
+    font-family: 'Source Serif 4', serif;
+  }
+  .masthead-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 5.5vw, 2.2rem);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .masthead-sub {
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+  .masthead-rule { border: none; border-top: 1px solid var(--ink); margin-top: 10px; }
+  .masthead-actions {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .btn-reload {
+    padding: 6px 11px;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Source Serif 4', serif;
+    min-height: 36px;
+    transition: all 0.15s;
+  }
+  .btn-reload:hover { background: var(--cream); color: var(--ink); }
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--correct);
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── PAGE ── */
+  .page {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 20px 14px 80px;
+  }
+
+  /* ── LOADING / ERROR ── */
+  #loading-screen {
+    text-align: center;
+    padding: 70px 20px;
+  }
+  .loading-ring {
+    display: inline-block;
+    width: 48px; height: 48px;
+    border: 3px solid var(--ink);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  #error-screen {
+    display: none;
+    background: #fce4e4;
+    border: 1px solid var(--wrong);
+    padding: 20px;
+    margin: 20px 14px;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.85rem;
+    color: var(--wrong);
+    line-height: 1.7;
+  }
+  #error-screen h3 { margin-bottom: 8px; font-family: 'Playfair Display', serif; }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .stat-card {
+    border: 1px solid var(--border);
+    background: white;
+    padding: 12px 10px;
+    text-align: center;
+    box-shadow: 1px 1px 0 var(--border);
+  }
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .stat-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'Source Serif 4', serif;
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 20px;
+    gap: 0;
+  }
+  .tab-btn {
+    padding: 9px 18px;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border: none;
+    background: var(--cream);
+    color: var(--muted);
+    cursor: pointer;
+    border-top: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    transition: all 0.15s;
+    flex: 1;
+  }
+  .tab-btn:first-child { border-left: 1px solid var(--border); }
+  .tab-btn.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  /* ── SORT BAR ── */
+  .sort-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .sort-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .sort-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+  .sort-btn {
+    padding: 4px 10px;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Source Serif 4', serif;
+    min-height: 32px;
+    transition: all 0.12s;
+  }
+  .sort-btn:hover { background: var(--cream); color: var(--ink); }
+  .sort-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* ── STUDENT TABLE ── */
+  .student-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  thead tr {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  th {
+    padding: 10px 12px;
+    text-align: left;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tbody tr { background: white; cursor: pointer; transition: background 0.12s; }
+  tbody tr:hover { background: var(--cream); }
+  tbody tr:last-child td { border-bottom: none; }
+  .table-wrap { border: 1px solid var(--border); box-shadow: 2px 2px 0 var(--border); }
+
+  /* Score pill */
+  .score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px; height: 26px;
+    border-radius: 2px;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: white;
+  }
+  .score-pill.high { background: var(--correct); }
+  .score-pill.mid  { background: var(--gold); }
+  .score-pill.low  { background: var(--wrong); }
+
+  .td-name {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .td-muted { color: var(--muted); font-size: 0.8rem; font-family: 'Noto Serif TC', serif; }
+
+  /* Mobile: card-style student rows */
+  .student-cards { display: none; }
+  .student-card {
+    border: 1px solid var(--border);
+    background: white;
+    padding: 13px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.12s;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+    align-items: center;
+    box-shadow: 1px 1px 0 var(--border);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .student-card:active { background: var(--cream); }
+  .sc-name {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .sc-meta { font-size: 0.72rem; color: var(--muted); font-family: 'Noto Serif TC', serif; margin-top: 2px; }
+  .sc-score {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-size: 0.95rem;
+    color: white;
+  }
+  .sc-score.high { background: var(--correct); }
+  .sc-score.mid  { background: var(--gold); }
+  .sc-score.low  { background: var(--wrong); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.85rem;
+    border: 1px dashed var(--border);
+  }
+  .empty-state-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+
+  /* ── WEAK QUESTIONS ── */
+  #tab-weak { display: none; }
+  .weak-note {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    font-family: 'Noto Serif TC', serif;
+    line-height: 1.6;
+    color: #7a4010;
+    margin-bottom: 16px;
+  }
+  .q-row {
+    border: 1px solid var(--border);
+    background: white;
+    margin-bottom: 8px;
+    overflow: hidden;
+    box-shadow: 1px 1px 0 var(--border);
+  }
+  .q-row.flagged {
+    border-color: var(--wrong);
+    background: #fff8f8;
+    box-shadow: 1px 1px 0 #e8b0b0;
+  }
+  .q-row-header {
+    padding: 11px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: start;
+  }
+  .q-row-text {
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .q-row-text .q-article {
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-family: 'Source Serif 4', serif;
+  }
+  .q-row-text .q-text { color: var(--ink); }
+  .q-row-right { text-align: right; flex-shrink: 0; min-width: 70px; }
+  .wrong-pct {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .wrong-pct.flagged { color: var(--wrong); }
+  .wrong-pct.warn    { color: var(--warn); }
+  .wrong-pct.ok      { color: var(--correct); }
+  .wrong-count {
+    font-size: 0.68rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    margin-top: 2px;
+  }
+  /* Bar */
+  .wrong-bar-wrap {
+    padding: 0 14px 10px;
+  }
+  .wrong-bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .wrong-bar-fill {
+    height: 100%;
+    border-radius: 0;
+    transition: width 0.4s ease;
+  }
+  .wrong-bar-fill.flagged { background: var(--wrong); }
+  .wrong-bar-fill.warn    { background: var(--warn); }
+  .wrong-bar-fill.ok      { background: var(--correct); }
+  .wrong-bar-threshold {
+    position: absolute;
+    top: -2px;
+    height: calc(100% + 4px);
+    width: 2px;
+    background: var(--ink);
+    left: 60%;
+    opacity: 0.35;
+  }
+  /* Flag badge */
+  .flag-badge {
+    display: inline-block;
+    background: var(--wrong);
+    color: white;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    font-family: 'Source Serif 4', serif;
+    margin-left: 6px;
+    vertical-align: middle;
+    text-transform: uppercase;
+  }
+
+  /* ── DETAIL OVERLAY ── */
+  .overlay-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,18,8,0.55);
+    z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+  .overlay-bg.show { display: block; }
+  .detail-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--paper);
+    z-index: 51;
+    max-height: 88vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    border-top: 3px double var(--ink);
+  }
+  .detail-panel.show { transform: translateY(0); }
+
+  @media (min-width: 640px) {
+    .detail-panel {
+      top: 50%;
+      left: 50%;
+      right: auto;
+      bottom: auto;
+      transform: translate(-50%, -40%);
+      width: min(680px, 94vw);
+      max-height: 80vh;
+      border: 1px solid var(--ink);
+      border-top: 3px double var(--ink);
+      box-shadow: 6px 6px 0 rgba(26,18,8,0.15);
+    }
+    .detail-panel.show { transform: translate(-50%, -50%); }
+  }
+
+  .detail-header {
+    position: sticky;
+    top: 0;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+  }
+  .detail-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .detail-sub { font-size: 0.68rem; color: #c8bfaa; margin-top: 2px; font-family: 'Source Serif 4', serif; }
+  .btn-close {
+    width: 36px; height: 36px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: var(--paper);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .btn-close:hover { background: rgba(255,255,255,0.1); }
+  .detail-body { padding: 16px 14px 30px; }
+
+  /* Session accordion */
+  .session-item {
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+    background: white;
+    box-shadow: 1px 1px 0 var(--border);
+    overflow: hidden;
+  }
+  .session-toggle {
+    width: 100%;
+    background: var(--cream);
+    border: none;
+    padding: 11px 14px;
+    text-align: left;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.12s;
+  }
+  .session-toggle:hover { background: #e5dece; }
+  .session-toggle-left {}
+  .session-date {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+  .session-article {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 220px;
+  }
+  .session-toggle-right { text-align: right; }
+  .session-score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px; height: 28px;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: white;
+  }
+  .session-score-pill.high { background: var(--correct); }
+  .session-score-pill.mid  { background: var(--gold); }
+  .session-score-pill.low  { background: var(--wrong); }
+  .session-meta-row {
+    font-size: 0.68rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    margin-top: 3px;
+  }
+  .session-chevron { font-size: 0.7rem; color: var(--muted); margin-top: 4px; transition: transform 0.2s; }
+  .session-chevron.open { transform: rotate(180deg); }
+
+  /* Session MCQ list */
+  .session-detail { display: none; padding: 10px 14px 14px; }
+  .session-detail.open { display: block; }
+  .mcq-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0ece4;
+    align-items: flex-start;
+    font-size: 0.83rem;
+    line-height: 1.45;
+  }
+  .mcq-item:last-child { border-bottom: none; }
+  .mcq-icon {
+    flex-shrink: 0;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-top: 1px;
+    color: white;
+  }
+  .mcq-icon.correct { background: var(--correct); }
+  .mcq-icon.wrong   { background: var(--wrong); }
+  .mcq-icon.unanswered { background: var(--muted); }
+  .mcq-body {}
+  .mcq-q { color: var(--ink); margin-bottom: 3px; }
+  .mcq-ans { font-size: 0.76rem; font-family: 'Noto Serif TC', serif; }
+  .mcq-ans .ans-correct { color: var(--correct); }
+  .mcq-ans .ans-wrong   { color: var(--wrong); }
+  .fill-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0ece4;
+    font-size: 0.82rem;
+  }
+  .fill-item:last-child { border-bottom: none; }
+  .fill-sentence { color: var(--muted); font-style: italic; margin-bottom: 4px; }
+  .fill-answers { font-size: 0.76rem; font-family: 'Noto Serif TC', serif; display: flex; flex-wrap: wrap; gap: 6px; }
+  .fill-tag {
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 0.72rem;
+  }
+  .fill-tag.correct { background: #d8f3dc; color: var(--correct); }
+  .fill-tag.wrong   { background: #fce4e4; color: var(--wrong); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 9px 18px;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.8rem;
+    z-index: 100;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 560px) {
+    .student-table-wrap { display: none; }
+    .student-cards { display: block; }
+    th, td { padding: 8px 10px; }
+  }
+  @media (min-width: 561px) {
+    .student-cards { display: none; }
+    .student-table-wrap { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-actions">
+    <span class="live-dot" id="live-dot" style="display:none" title="即時同步中"></span>
+    <button class="btn-reload" onclick="manualReload()">↺ 重新整理</button>
+  </div>
+  <div class="masthead-center">
+    <div class="masthead-badge">教師後台</div>
+    <div class="masthead-title">The English Press</div>
+    <div class="masthead-sub">班級答題紀錄總覽 &nbsp;·&nbsp; Realtime Database</div>
+  </div>
+  <hr class="masthead-rule">
+</header>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="loading-ring"></div>
+  <div class="loading-text">正在讀取 Firebase 資料⋯</div>
+</div>
+
+<!-- Error -->
+<div id="error-screen">
+  <h3>連線失敗</h3>
+  <div id="error-detail"></div>
+  <br>
+  <strong>可能原因：</strong><br>
+  1. Firebase Realtime Database 尚未啟用<br>
+  2. 資料庫安全規則不允許讀取（請將 /sessions 的 .read 設為 true）<br>
+  3. 網路連線問題
+</div>
+
+<!-- Main Content -->
+<div class="page" id="main-content" style="display:none">
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-students">—</div>
+      <div class="stat-label">學生人數</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-sessions">—</div>
+      <div class="stat-label">總練習次數</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-avg">—</div>
+      <div class="stat-label">班級平均</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-btn-students" onclick="switchTab('students')">學生總覽</button>
+    <button class="tab-btn" id="tab-btn-weak" onclick="switchTab('weak')">弱項分析</button>
+  </div>
+
+  <!-- Tab: 學生總覽 -->
+  <div id="tab-students">
+    <div class="sort-bar">
+      <span class="sort-label">排序：</span>
+      <div class="sort-btns">
+        <button class="sort-btn" id="sort-name"  onclick="setSort('name')">姓名</button>
+        <button class="sort-btn active" id="sort-recent" onclick="setSort('recent')">最近練習</button>
+        <button class="sort-btn" id="sort-score" onclick="setSort('score')">平均分數</button>
+        <button class="sort-btn" id="sort-count" onclick="setSort('count')">練習次數</button>
+      </div>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="table-wrap student-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>學生姓名</th>
+            <th>練習次數</th>
+            <th>平均分數</th>
+            <th>上次練習</th>
+            <th>程度</th>
+          </tr>
+        </thead>
+        <tbody id="student-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Mobile cards -->
+    <div class="student-cards" id="student-cards"></div>
+
+    <div id="students-empty" class="empty-state" style="display:none">
+      <div class="empty-state-title">尚無答題紀錄</div>
+      學生完成作答後，紀錄會自動出現在這裡。
+    </div>
+  </div>
+
+  <!-- Tab: 弱項分析 -->
+  <div id="tab-weak">
+    <div class="weak-note">
+      ⚠ 以下統計各題在所有答題紀錄中的<strong>答錯率</strong>。超過 60% 的題目以紅色標示，建議課堂上加強說明。
+    </div>
+    <div id="weak-list"></div>
+    <div id="weak-empty" class="empty-state" style="display:none">
+      <div class="empty-state-title">尚無足夠資料</div>
+      至少需要一筆答題紀錄才能顯示弱項分析。
+    </div>
+  </div>
+
+</div>
+
+<!-- Student Detail Overlay -->
+<div class="overlay-bg" id="overlay-bg" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-header">
+    <div>
+      <div class="detail-title" id="detail-name">—</div>
+      <div class="detail-sub" id="detail-summary"></div>
+    </div>
+    <button class="btn-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp }      from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
+import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js';
+
+// ── Firebase Config ──
+const firebaseConfig = {
+  apiKey:            'AIzaSyAFDWrF_4YbBM_7mO7MRFHbcb5SUXnUphg',
+  authDomain:        'news-english-ef2e4.firebaseapp.com',
+  databaseURL:       'https://news-english-ef2e4-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId:         'news-english-ef2e4',
+  storageBucket:     'news-english-ef2e4.firebasestorage.app',
+  messagingSenderId: '1039973180615',
+  appId:             '1:1039973180615:web:dca063a42dbf9fb228cae2',
+  measurementId:     'G-1ELC7Y97MF'
+};
+
+// ── State ──
+let studentsMap = {};   // { name: { sessions, count, avgScore, lastTimestamp, levels[] } }
+let weakList    = [];   // [{ question, articleTitle, total, wrong, wrongRate }]
+let sortBy      = 'recent';
+let currentStudentName = null;
+let firstLoad   = true;
+
+// ── Init Firebase ──
+let db;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+} catch(e) {
+  showError('Firebase 初始化失敗：' + e.message);
+}
+
+if (db) {
+  onValue(
+    ref(db, 'sessions'),
+    snapshot => {
+      const raw = snapshot.val() || {};
+      processData(raw);
+      if (firstLoad) {
+        firstLoad = false;
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        document.getElementById('live-dot').style.display = 'inline-block';
+      }
+    },
+    error => {
+      showError(error.message);
+    }
+  );
+}
+
+// ── Data Processing ──
+function processData(rawSessions) {
+  const sessions = Object.values(rawSessions);
+
+  // Group by student
+  studentsMap = {};
+  sessions.forEach(s => {
+    const name = (s.studentName || '（未填姓名）').trim();
+    if (!studentsMap[name]) {
+      studentsMap[name] = { name, sessions: [], levels: [] };
+    }
+    studentsMap[name].sessions.push(s);
+    if (s.level) studentsMap[name].levels.push(s.level);
+  });
+
+  Object.values(studentsMap).forEach(st => {
+    st.sessions.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+    st.count     = st.sessions.length;
+    st.avgScore  = st.count
+      ? Math.round(st.sessions.reduce((sum, s) => sum + (s.score ?? 0), 0) / st.count)
+      : 0;
+    st.lastTimestamp = st.sessions[0]?.timestamp || '';
+    st.mainLevel = mostCommon(st.levels) || '—';
+  });
+
+  // Aggregate question wrong rates
+  const qMap = {};
+  sessions.forEach(s => {
+    const article = s.articleTitle || '（未知文章）';
+    (s.mcq || []).forEach(q => {
+      if (!q.question) return;
+      const key = q.question;
+      if (!qMap[key]) {
+        qMap[key] = { question: q.question, articleTitle: article, total: 0, wrong: 0 };
+      }
+      qMap[key].total++;
+      if (!q.isCorrect) qMap[key].wrong++;
+    });
+  });
+
+  weakList = Object.values(qMap)
+    .map(q => ({ ...q, wrongRate: Math.round(q.wrong / q.total * 100) }))
+    .sort((a, b) => b.wrongRate - a.wrongRate);
+
+  // Stats
+  const totalSessions = sessions.length;
+  const uniqueStudents = Object.keys(studentsMap).length;
+  const classAvg = totalSessions
+    ? Math.round(sessions.reduce((s, r) => s + (r.score ?? 0), 0) / totalSessions)
+    : 0;
+
+  document.getElementById('stat-students').textContent = uniqueStudents;
+  document.getElementById('stat-sessions').textContent = totalSessions;
+  document.getElementById('stat-avg').textContent      = totalSessions ? classAvg + '%' : '—';
+
+  renderStudentList();
+  renderWeakList();
+}
+
+// ── Render Student List ──
+function renderStudentList() {
+  const students = getSortedStudents();
+  const isEmpty = students.length === 0;
+
+  document.getElementById('students-empty').style.display = isEmpty ? 'block' : 'none';
+
+  // Desktop table
+  const tbody = document.getElementById('student-tbody');
+  tbody.innerHTML = students.map(st => {
+    const cls = scoreClass(st.avgScore);
+    const lvls = [...new Set(st.levels)].join(', ') || '—';
+    return `<tr onclick="openDetail('${escAttr(st.name)}')">
+      <td class="td-name">${escHtml(st.name)}</td>
+      <td>${st.count} 次</td>
+      <td><span class="score-pill ${cls}">${st.avgScore}%</span></td>
+      <td class="td-muted">${relTime(st.lastTimestamp)}</td>
+      <td class="td-muted">${escHtml(lvls)}</td>
+    </tr>`;
+  }).join('');
+
+  // Mobile cards
+  const cards = document.getElementById('student-cards');
+  cards.innerHTML = students.map(st => {
+    const cls = scoreClass(st.avgScore);
+    return `<div class="student-card" onclick="openDetail('${escAttr(st.name)}')">
+      <div>
+        <div class="sc-name">${escHtml(st.name)}</div>
+        <div class="sc-meta">${st.count} 次練習 &nbsp;·&nbsp; 上次 ${relTime(st.lastTimestamp)}</div>
+      </div>
+      <div class="sc-score ${cls}">${st.avgScore}%</div>
+    </div>`;
+  }).join('');
+}
+
+function getSortedStudents() {
+  const arr = Object.values(studentsMap);
+  const dir = { name: 1, recent: -1, score: -1, count: -1 };
+  return arr.sort((a, b) => {
+    if (sortBy === 'name')   return a.name.localeCompare(b.name, 'zh-TW') * dir.name;
+    if (sortBy === 'recent') return (b.lastTimestamp || '').localeCompare(a.lastTimestamp || '') * -dir.recent;
+    if (sortBy === 'score')  return (b.avgScore - a.avgScore);
+    if (sortBy === 'count')  return (b.count - a.count);
+    return 0;
+  });
+}
+
+// ── Render Weak List ──
+function renderWeakList() {
+  const list = document.getElementById('weak-list');
+  const empty = document.getElementById('weak-empty');
+
+  if (!weakList.length) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = weakList.map(q => {
+    const isFlagged = q.wrongRate >= 60;
+    const isWarn    = q.wrongRate >= 40 && q.wrongRate < 60;
+    const barCls    = isFlagged ? 'flagged' : isWarn ? 'warn' : 'ok';
+    const pctCls    = isFlagged ? 'flagged' : isWarn ? 'warn' : 'ok';
+
+    return `<div class="q-row${isFlagged ? ' flagged' : ''}">
+      <div class="q-row-header">
+        <div class="q-row-text">
+          <div class="q-article">${escHtml(q.articleTitle.slice(0, 50))}${q.articleTitle.length > 50 ? '…' : ''}</div>
+          <div class="q-text">${escHtml(q.question)}${isFlagged ? '<span class="flag-badge">需加強</span>' : ''}</div>
+        </div>
+        <div class="q-row-right">
+          <div class="wrong-pct ${pctCls}">${q.wrongRate}%</div>
+          <div class="wrong-count">${q.wrong}/${q.total} 人答錯</div>
+        </div>
+      </div>
+      <div class="wrong-bar-wrap">
+        <div class="wrong-bar-track">
+          <div class="wrong-bar-fill ${barCls}" style="width:${q.wrongRate}%"></div>
+          <div class="wrong-bar-threshold"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Student Detail ──
+window.openDetail = function(name) {
+  const st = studentsMap[name];
+  if (!st) return;
+  currentStudentName = name;
+
+  document.getElementById('detail-name').textContent = name;
+  document.getElementById('detail-summary').textContent =
+    `共 ${st.count} 次練習 · 平均 ${st.avgScore}%`;
+
+  // Render sessions
+  const body = document.getElementById('detail-body');
+  body.innerHTML = st.sessions.map((s, idx) => {
+    const cls = scoreClass(s.score ?? 0);
+    const dt  = fmtDatetime(s.timestamp);
+    const art = s.articleTitle || '（未知文章）';
+    const secs = fmtSecs(s.secondsSpent);
+    const correct = s.correct ?? '—';
+    const total   = s.total ?? '—';
+
+    const mcqHtml = (s.mcq || []).map(q => {
+      const iconCls = q.isCorrect ? 'correct' : (q.studentAnswer === '（未作答）' ? 'unanswered' : 'wrong');
+      const iconTxt = q.isCorrect ? '✓' : '✗';
+      const ansHtml = q.isCorrect
+        ? `<span class="ans-correct">答對：${escHtml(q.studentAnswer || '')}</span>`
+        : `<span class="ans-wrong">作答：${escHtml(q.studentAnswer || '—')}</span>
+           &nbsp;→&nbsp;
+           <span class="ans-correct">正解：${escHtml(q.correctAnswer || '')}</span>`;
+      return `<div class="mcq-item">
+        <div class="mcq-icon ${iconCls}">${iconTxt}</div>
+        <div class="mcq-body">
+          <div class="mcq-q">${escHtml(q.question || '')}</div>
+          <div class="mcq-ans">${ansHtml}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    const fillHtml = (s.fill || []).map(f => {
+      const tagsHtml = (f.answers || []).map((ans, i) => {
+        const ok = f.isCorrect?.[i];
+        return `<span class="fill-tag ${ok ? 'correct' : 'wrong'}">${escHtml(ans || '（空白）')}</span>`;
+      }).join('');
+      return `<div class="fill-item">
+        <div class="fill-sentence">${escHtml(f.sentence || '')}</div>
+        <div class="fill-answers">${tagsHtml || '<span style="color:var(--muted);font-size:0.72rem">無填空資料</span>'}</div>
+      </div>`;
+    }).join('');
+
+    const hasDetail = mcqHtml || fillHtml;
+
+    return `<div class="session-item">
+      <button class="session-toggle" onclick="toggleSession(this)" ${!hasDetail ? 'disabled' : ''}>
+        <div class="session-toggle-left">
+          <div class="session-date">${dt}</div>
+          <div class="session-article" title="${escAttr(art)}">${escHtml(art.slice(0,36))}${art.length>36?'…':''}</div>
+        </div>
+        <div class="session-toggle-right">
+          <div><span class="session-score-pill ${cls}">${(s.score ?? '—')}${s.score!=null?'%':''}</span></div>
+          <div class="session-meta-row">${correct}/${total} 題 · ${secs}</div>
+          ${hasDetail ? '<div class="session-chevron" id="chev-' + idx + '">▼</div>' : ''}
+        </div>
+      </button>
+      ${hasDetail ? `<div class="session-detail" id="detail-${idx}">
+        ${mcqHtml ? '<div style="margin-bottom:4px;font-size:0.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);padding:2px 0 6px;border-bottom:1px solid var(--border)">選擇題</div>' + mcqHtml : ''}
+        ${fillHtml ? '<div style="margin-top:12px;margin-bottom:4px;font-size:0.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);padding:2px 0 6px;border-bottom:1px solid var(--border)">填空題</div>' + fillHtml : ''}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('overlay-bg').classList.add('show');
+  document.getElementById('detail-panel').classList.add('show');
+  document.body.style.overflow = 'hidden';
+};
+
+window.closeDetail = function() {
+  document.getElementById('overlay-bg').classList.remove('show');
+  document.getElementById('detail-panel').classList.remove('show');
+  document.body.style.overflow = '';
+  currentStudentName = null;
+};
+
+window.toggleSession = function(btn) {
+  const idx = [...btn.parentElement.parentElement.children].indexOf(btn.parentElement);
+  // find detail div inside same session-item
+  const item = btn.closest('.session-item');
+  const detail = item.querySelector('.session-detail');
+  const chev   = item.querySelector('.session-chevron');
+  if (!detail) return;
+  const isOpen = detail.classList.contains('open');
+  detail.classList.toggle('open', !isOpen);
+  if (chev) chev.classList.toggle('open', !isOpen);
+};
+
+// ── Tab / Sort ──
+window.switchTab = function(tab) {
+  document.getElementById('tab-students').style.display = tab === 'students' ? 'block' : 'none';
+  document.getElementById('tab-weak').style.display     = tab === 'weak'     ? 'block' : 'none';
+  document.getElementById('tab-btn-students').classList.toggle('active', tab === 'students');
+  document.getElementById('tab-btn-weak').classList.toggle('active', tab === 'weak');
+};
+
+window.setSort = function(s) {
+  sortBy = s;
+  ['name','recent','score','count'].forEach(k => {
+    document.getElementById('sort-' + k).classList.toggle('active', k === s);
+  });
+  renderStudentList();
+};
+
+window.manualReload = function() {
+  showToast('資料已是即時同步狀態');
+};
+
+// ── Helpers ──
+function scoreClass(n) {
+  return n >= 80 ? 'high' : n >= 60 ? 'mid' : 'low';
+}
+
+function relTime(iso) {
+  if (!iso) return '—';
+  const then = new Date(iso);
+  if (isNaN(then)) return '—';
+  const diffMs = Date.now() - then;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHr  = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+  if (diffMin < 1)  return '剛才';
+  if (diffMin < 60) return diffMin + ' 分鐘前';
+  if (diffHr  < 24) return diffHr  + ' 小時前';
+  if (diffDay === 1) return '昨天';
+  if (diffDay < 7)  return diffDay + ' 天前';
+  return then.toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit' });
+}
+
+function fmtDatetime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('zh-TW', { month:'2-digit', day:'2-digit' })
+       + ' ' + d.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
+}
+
+function fmtSecs(s) {
+  if (!s && s !== 0) return '—';
+  const m = Math.floor(s / 60), sec = s % 60;
+  return m > 0 ? `${m}分${sec}秒` : `${sec}秒`;
+}
+
+function mostCommon(arr) {
+  if (!arr.length) return null;
+  const freq = {};
+  arr.forEach(v => freq[v] = (freq[v] || 0) + 1);
+  return Object.entries(freq).sort((a,b) => b[1]-a[1])[0][0];
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s).replace(/'/g,'&apos;').replace(/"/g,'&quot;');
+}
+
+function showError(msg) {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('error-screen').style.display = 'block';
+  document.getElementById('error-detail').textContent = msg;
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
