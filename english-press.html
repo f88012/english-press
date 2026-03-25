@@ -777,6 +777,16 @@
         </div>
         <div class="api-key-status" id="api-key-status"></div>
         <div class="api-key-hint">取得 API Key：console.anthropic.com → API Keys</div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+
+        <span class="opt-label">Firebase API Key（答題紀錄雲端同步用）</span>
+        <div class="api-key-row">
+          <input type="password" id="fb-key-input" placeholder="AIzaSy..." autocomplete="off" />
+          <button class="btn-save-key" onclick="saveFbKey()">儲存</button>
+        </div>
+        <div class="api-key-status" id="fb-key-status"></div>
+        <div class="api-key-hint">取得方式：Firebase Console → 專案設定 → 您的應用程式 → apiKey</div>
       </div>
     </div>
 
@@ -909,8 +919,7 @@
   import { initializeApp }        from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
   import { getDatabase, ref, push } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js';
 
-  const firebaseConfig = {
-    apiKey:            'AIzaSyAFDWrF_4YbBM_7mO7MRFHbcb5SUXnUphg',
+  const FB_CONFIG_BASE = {
     authDomain:        'news-english-ef2e4.firebaseapp.com',
     databaseURL:       'https://news-english-ef2e4-default-rtdb.asia-southeast1.firebasedatabase.app',
     projectId:         'news-english-ef2e4',
@@ -920,20 +929,21 @@
     measurementId:     'G-1ELC7Y97MF'
   };
 
+  const fbApiKey = localStorage.getItem('ep_firebase_key') || '';
   let db = null;
 
-  try {
-    const app = initializeApp(firebaseConfig);
-    db = getDatabase(app);
-    console.info('[Firebase] Realtime Database 初始化成功');
-  } catch (e) {
-    console.warn('[Firebase] 初始化失敗，答題紀錄將只存本機：', e.message);
+  if (fbApiKey) {
+    try {
+      const app = initializeApp({ apiKey: fbApiKey, ...FB_CONFIG_BASE });
+      db = getDatabase(app);
+      console.info('[Firebase] Realtime Database 初始化成功');
+    } catch (e) {
+      console.warn('[Firebase] 初始化失敗，答題紀錄將只存本機：', e.message);
+    }
+  } else {
+    console.info('[Firebase] 未設定 Firebase API Key，答題紀錄只存本機');
   }
 
-  /**
-   * 儲存一筆答題 session 至 /sessions/{pushKey}
-   * @returns {Promise<boolean>} true = 成功；false = 失敗（已 catch，不會拋出）
-   */
   window.fbSaveSession = async function(sessionData) {
     if (!db) return false;
     try {
@@ -975,9 +985,28 @@ function initApiKey() {
     document.getElementById('api-key-status').textContent = '✓ 已儲存 API Key';
     document.getElementById('api-key-status').className = 'api-key-status ok';
   } else {
-    // Auto-open settings if no key
     openApiSettings();
   }
+  const fbKey = localStorage.getItem('ep_firebase_key') || '';
+  if (fbKey) {
+    document.getElementById('fb-key-input').value = fbKey;
+    document.getElementById('fb-key-status').textContent = '✓ 已儲存 Firebase Key';
+    document.getElementById('fb-key-status').className = 'api-key-status ok';
+  }
+}
+
+function saveFbKey() {
+  const key = document.getElementById('fb-key-input').value.trim();
+  const statusEl = document.getElementById('fb-key-status');
+  if (!key.startsWith('AIza')) {
+    statusEl.textContent = '⚠ 格式不符，Firebase API Key 應以 AIza 開頭';
+    statusEl.className = 'api-key-status';
+    return;
+  }
+  localStorage.setItem('ep_firebase_key', key);
+  statusEl.textContent = '✓ 已儲存';
+  statusEl.className = 'api-key-status ok';
+  showToast('Firebase Key 已儲存');
 }
 
 function toggleApiSettings() {

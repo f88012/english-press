@@ -642,6 +642,65 @@
   .fill-tag.correct { background: #d8f3dc; color: var(--correct); }
   .fill-tag.wrong   { background: #fce4e4; color: var(--wrong); }
 
+  /* ── SETUP SCREEN ── */
+  #setup-screen { display: none; }
+  .setup-card {
+    max-width: 460px;
+    margin: 36px auto 0;
+    border: 1px solid var(--border);
+    background: white;
+    box-shadow: 2px 2px 0 var(--border);
+  }
+  .setup-card-header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 16px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .setup-card-body { padding: 18px 16px 20px; }
+  .setup-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    line-height: 1.75;
+    margin-bottom: 14px;
+  }
+  .setup-steps {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    line-height: 2;
+    margin-bottom: 16px;
+    padding-left: 14px;
+    border-left: 2px solid var(--gold);
+    list-style: decimal inside;
+  }
+  .fb-key-error {
+    display: none;
+    color: var(--wrong);
+    font-size: 0.76rem;
+    font-family: 'Noto Serif TC', serif;
+    margin-top: 6px;
+  }
+  .api-key-row input { min-height: 44px; }
+  .btn-change-key {
+    padding: 5px 10px;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Source Serif 4', serif;
+    min-height: 32px;
+    transition: all 0.15s;
+  }
+  .btn-change-key:hover { background: #fce4e4; color: var(--wrong); border-color: var(--wrong); }
+
   /* Toast */
   .toast {
     position: fixed;
@@ -677,6 +736,7 @@
 <header class="masthead">
   <div class="masthead-actions">
     <span class="live-dot" id="live-dot" style="display:none" title="即時同步中"></span>
+    <button class="btn-change-key" id="btn-change-key" style="display:none" onclick="clearFirebaseKey()">變更 Key</button>
     <button class="btn-reload" onclick="manualReload()">↺ 重新整理</button>
   </div>
   <div class="masthead-center">
@@ -691,6 +751,44 @@
 <div id="loading-screen">
   <div class="loading-ring"></div>
   <div class="loading-text">正在讀取 Firebase 資料⋯</div>
+</div>
+
+<!-- Setup Screen (首次輸入 Firebase API Key) -->
+<div id="setup-screen">
+  <div class="page">
+    <div class="setup-card">
+      <div class="setup-card-header">⚙ 首次設定 — Firebase API Key</div>
+      <div class="setup-card-body">
+        <p class="setup-desc">
+          讀取學生答題紀錄需要 Firebase API Key。<br>
+          Key 只存在你的瀏覽器，不會上傳至任何伺服器。
+        </p>
+        <ol class="setup-steps">
+          <li>開啟 Firebase Console → 選你的專案</li>
+          <li>左下角「專案設定」（齒輪圖示）</li>
+          <li>「您的應用程式」→ 找到 <code>apiKey</code></li>
+          <li>複製貼入下方</li>
+        </ol>
+        <span style="font-size:0.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Firebase API Key</span>
+        <div class="api-key-row" style="margin-top:5px">
+          <input type="password" id="fb-key-input"
+                 placeholder="AIzaSy..."
+                 autocomplete="off"
+                 onkeydown="if(event.key==='Enter') saveFirebaseKey()"
+                 style="flex:1;padding:10px 12px;border:1px solid var(--border);font-family:monospace;font-size:0.82rem;outline:none" />
+          <button class="btn-save-key"
+                  onclick="saveFirebaseKey()"
+                  style="padding:10px 16px;background:var(--ink);color:var(--paper);border:none;font-family:'Playfair Display',serif;font-weight:700;cursor:pointer;white-space:nowrap">
+            連線
+          </button>
+        </div>
+        <div class="fb-key-error" id="fb-key-error"></div>
+        <div style="margin-top:8px;font-size:0.68rem;color:var(--muted);font-family:'Noto Serif TC',serif">
+          Key 格式：AIzaSy... （約 39 字元）
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Error -->
@@ -800,9 +898,8 @@
 import { initializeApp }      from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
 import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js';
 
-// ── Firebase Config ──
-const firebaseConfig = {
-  apiKey:            'AIzaSyAFDWrF_4YbBM_7mO7MRFHbcb5SUXnUphg',
+// ── Firebase Config（不含 apiKey，從 localStorage 讀取）──
+const FB_CONFIG_BASE = {
   authDomain:        'news-english-ef2e4.firebaseapp.com',
   databaseURL:       'https://news-english-ef2e4-default-rtdb.asia-southeast1.firebasedatabase.app',
   projectId:         'news-english-ef2e4',
@@ -813,22 +910,54 @@ const firebaseConfig = {
 };
 
 // ── State ──
-let studentsMap = {};   // { name: { sessions, count, avgScore, lastTimestamp, levels[] } }
-let weakList    = [];   // [{ question, articleTitle, total, wrong, wrongRate }]
+let studentsMap = {};
+let weakList    = [];
 let sortBy      = 'recent';
 let currentStudentName = null;
 let firstLoad   = true;
 
-// ── Init Firebase ──
-let db;
-try {
-  const app = initializeApp(firebaseConfig);
-  db = getDatabase(app);
-} catch(e) {
-  showError('Firebase 初始化失敗：' + e.message);
+// ── Key 管理（暴露給 HTML onclick）──
+window.saveFirebaseKey = function() {
+  const key    = (document.getElementById('fb-key-input').value || '').trim();
+  const errEl  = document.getElementById('fb-key-error');
+  if (!key.startsWith('AIza')) {
+    errEl.textContent   = '格式不符，Firebase API Key 應以 AIza 開頭（約 39 字元）';
+    errEl.style.display = 'block';
+    return;
+  }
+  localStorage.setItem('ep_firebase_key', key);
+  location.reload();
+};
+
+window.clearFirebaseKey = function() {
+  if (!confirm('確定要清除 Firebase API Key 嗎？\n下次開啟需重新輸入。')) return;
+  localStorage.removeItem('ep_firebase_key');
+  location.reload();
+};
+
+// ── 依 Key 是否存在決定顯示 setup 或載入資料 ──
+const storedFbKey = localStorage.getItem('ep_firebase_key') || '';
+
+if (!storedFbKey) {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display   = 'block';
+} else {
+  initFirebase(storedFbKey);
 }
 
-if (db) {
+function initFirebase(apiKey) {
+  let db;
+  try {
+    const app = initializeApp({ apiKey, ...FB_CONFIG_BASE });
+    db = getDatabase(app);
+  } catch(e) {
+    showError('Firebase 初始化失敗：' + e.message);
+    return;
+  }
+
+  // 顯示「變更 Key」按鈕
+  document.getElementById('btn-change-key').style.display = 'inline-block';
+
   onValue(
     ref(db, 'sessions'),
     snapshot => {
@@ -837,8 +966,8 @@ if (db) {
       if (firstLoad) {
         firstLoad = false;
         document.getElementById('loading-screen').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        document.getElementById('live-dot').style.display = 'inline-block';
+        document.getElementById('main-content').style.display   = 'block';
+        document.getElementById('live-dot').style.display       = 'inline-block';
       }
     },
     error => {
