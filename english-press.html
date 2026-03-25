@@ -997,13 +997,13 @@
   };
 
   window.fbPublish = async function(payload) {
-    if (!db) return false;
+    if (!db) return { ok: false, err: 'Firebase 未初始化（請確認 API Key 已正確儲存，或重新整理頁面）' };
     try {
       await set(ref(db, 'published'), payload);
-      return true;
+      return { ok: true };
     } catch (e) {
-      console.warn('[Firebase] 發布失敗：', e.message);
-      return false;
+      console.error('[Firebase] fbPublish 失敗：', e);
+      return { ok: false, err: e.message };
     }
   };
 </script>
@@ -1589,15 +1589,15 @@ async function publishToStudents() {
   };
 
   if (typeof window.fbPublish === 'function') {
-    const ok = await window.fbPublish(payload);
-    if (ok) {
+    const result = await window.fbPublish(payload);
+    if (result.ok) {
       setPublishUI('done', '✓ 學生開啟 student.html 即可看到此題組');
       showToast('已發布給學生 ✓');
     } else {
-      setPublishUI('error', '發布失敗，請確認 Firebase API Key 已設定');
+      setPublishUI('error', '發布失敗：' + result.err);
     }
   } else {
-    setPublishUI('error', '請先在「教師設定」中儲存 Firebase API Key');
+    setPublishUI('error', '請先在「教師設定」中儲存 Firebase API Key，並重新整理頁面');
   }
 }
 
