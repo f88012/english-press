@@ -65,6 +65,11 @@ input[type=search]::placeholder{color:var(--muted);}
   <div class="alpha-bar" id="alphaBar"></div>
 </header>
 <div class="stats-bar" id="statsBar">共 2,778 個單字</div>
+<div id="audioTest" style="text-align:center;padding:6px;background:#2a1f5e;font-size:13px;color:#aaa;">
+  點這裡測試語音 →
+  <button onclick="testSpeak()" style="background:#7c6af7;color:#fff;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:13px;">🔊 測試發音</button>
+  <span id="audioTestMsg"></span>
+</div>
 <div class="grid" id="grid"></div>
 <div class="pagination" id="pagination"></div>
 
@@ -143,6 +148,22 @@ async function fetchMP3(word){
       }
     }
   }catch(e){}
+}
+
+function testSpeak(){
+  const msg=document.getElementById('audioTestMsg');
+  if(!('speechSynthesis' in window)){
+    msg.textContent=' ❌ 此瀏覽器不支援語音';
+    return;
+  }
+  msg.textContent=' ⏳ 播放中...';
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance('hello');
+  u.lang='en-US'; u.rate=0.9;
+  u.onstart=()=>{ msg.textContent=' ✅ 語音正常！'; };
+  u.onend=()=>{ setTimeout(()=>{ msg.textContent=''; }, 2000); };
+  u.onerror=(e)=>{ msg.textContent=' ❌ 錯誤：'+e.error; };
+  speechSynthesis.speak(u);
 }
 
 /* ── Alpha bar ── */
