@@ -457,191 +457,6 @@
     text-transform: uppercase;
   }
 
-  /* ── DETAIL OVERLAY ── */
-  .overlay-bg {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(26,18,8,0.55);
-    z-index: 50;
-    backdrop-filter: blur(2px);
-  }
-  .overlay-bg.show { display: block; }
-  .detail-panel {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: var(--paper);
-    z-index: 51;
-    max-height: 88vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    transform: translateY(100%);
-    transition: transform 0.3s ease;
-    border-top: 3px double var(--ink);
-  }
-  .detail-panel.show { transform: translateY(0); }
-
-  @media (min-width: 640px) {
-    .detail-panel {
-      top: 50%;
-      left: 50%;
-      right: auto;
-      bottom: auto;
-      transform: translate(-50%, 120%);
-      width: min(680px, 94vw);
-      max-height: 80vh;
-      border: 1px solid var(--ink);
-      border-top: 3px double var(--ink);
-      box-shadow: 6px 6px 0 rgba(26,18,8,0.15);
-    }
-    .detail-panel.show { transform: translate(-50%, -50%); }
-  }
-
-  .detail-header {
-    position: sticky;
-    top: 0;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 1;
-  }
-  .detail-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.1rem;
-    font-weight: 700;
-  }
-  .detail-sub { font-size: 0.68rem; color: #c8bfaa; margin-top: 2px; font-family: 'Source Serif 4', serif; }
-  .btn-close {
-    width: 36px; height: 36px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.3);
-    color: var(--paper);
-    font-size: 1.1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: background 0.15s;
-  }
-  .btn-close:hover { background: rgba(255,255,255,0.1); }
-  .detail-body { padding: 16px 14px 30px; }
-
-  /* Session accordion */
-  .session-item {
-    border: 1px solid var(--border);
-    margin-bottom: 10px;
-    background: white;
-    box-shadow: 1px 1px 0 var(--border);
-    overflow: hidden;
-  }
-  .session-toggle {
-    width: 100%;
-    background: var(--cream);
-    border: none;
-    padding: 11px 14px;
-    text-align: left;
-    cursor: pointer;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    align-items: center;
-    border-bottom: 1px solid var(--border);
-    -webkit-tap-highlight-color: transparent;
-    transition: background 0.12s;
-  }
-  .session-toggle:hover { background: #e5dece; }
-  .session-toggle-left {}
-  .session-date {
-    font-family: 'Playfair Display', serif;
-    font-size: 0.9rem;
-    font-weight: 700;
-  }
-  .session-article {
-    font-size: 0.72rem;
-    color: var(--muted);
-    font-family: 'Noto Serif TC', serif;
-    margin-top: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 220px;
-  }
-  .session-toggle-right { text-align: right; }
-  .session-score-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px; height: 28px;
-    font-family: 'Playfair Display', serif;
-    font-weight: 700;
-    font-size: 0.85rem;
-    color: white;
-  }
-  .session-score-pill.high { background: var(--correct); }
-  .session-score-pill.mid  { background: var(--gold); }
-  .session-score-pill.low  { background: var(--wrong); }
-  .session-meta-row {
-    font-size: 0.68rem;
-    color: var(--muted);
-    font-family: 'Noto Serif TC', serif;
-    margin-top: 3px;
-  }
-  .session-chevron { font-size: 0.7rem; color: var(--muted); margin-top: 4px; transition: transform 0.2s; }
-  .session-chevron.open { transform: rotate(180deg); }
-
-  /* Session MCQ list */
-  .session-detail { display: none; padding: 10px 14px 14px; }
-  .session-detail.open { display: block; }
-  .mcq-item {
-    display: flex;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0ece4;
-    align-items: flex-start;
-    font-size: 0.83rem;
-    line-height: 1.45;
-  }
-  .mcq-item:last-child { border-bottom: none; }
-  .mcq-icon {
-    flex-shrink: 0;
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.65rem;
-    font-weight: 700;
-    margin-top: 1px;
-    color: white;
-  }
-  .mcq-icon.correct { background: var(--correct); }
-  .mcq-icon.wrong   { background: var(--wrong); }
-  .mcq-icon.unanswered { background: var(--muted); }
-  .mcq-body {}
-  .mcq-q { color: var(--ink); margin-bottom: 3px; }
-  .mcq-ans { font-size: 0.76rem; font-family: 'Noto Serif TC', serif; }
-  .mcq-ans .ans-correct { color: var(--correct); }
-  .mcq-ans .ans-wrong   { color: var(--wrong); }
-  .fill-item {
-    padding: 8px 0;
-    border-bottom: 1px solid #f0ece4;
-    font-size: 0.82rem;
-  }
-  .fill-item:last-child { border-bottom: none; }
-  .fill-sentence { color: var(--muted); font-style: italic; margin-bottom: 4px; }
-  .fill-answers { font-size: 0.76rem; font-family: 'Noto Serif TC', serif; display: flex; flex-wrap: wrap; gap: 6px; }
-  .fill-tag {
-    padding: 2px 8px;
-    border-radius: 2px;
-    font-size: 0.72rem;
-  }
-  .fill-tag.correct { background: #d8f3dc; color: var(--correct); }
-  .fill-tag.wrong   { background: #fce4e4; color: var(--wrong); }
-
   /* ── SETUP SCREEN ── */
   #setup-screen { display: none; }
   .setup-card {
@@ -878,19 +693,6 @@
 
 </div>
 
-<!-- Student Detail Overlay -->
-<div class="overlay-bg" id="overlay-bg" onclick="closeDetail()"></div>
-<div class="detail-panel" id="detail-panel">
-  <div class="detail-header">
-    <div>
-      <div class="detail-title" id="detail-name">—</div>
-      <div class="detail-sub" id="detail-summary"></div>
-    </div>
-    <button class="btn-close" onclick="closeDetail()">✕</button>
-  </div>
-  <div class="detail-body" id="detail-body"></div>
-</div>
-
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -913,7 +715,6 @@ const FB_CONFIG_BASE = {
 let studentsMap = {};
 let weakList    = [];
 let sortBy      = 'recent';
-let currentStudentName = null;
 let firstLoad   = true;
 
 // ── Key 管理（暴露給 HTML onclick）──
@@ -1047,7 +848,7 @@ function renderStudentList() {
   tbody.innerHTML = students.map(st => {
     const cls = scoreClass(st.avgScore);
     const lvls = [...new Set(st.levels)].join(', ') || '—';
-    return `<tr onclick="openDetail('${escAttr(st.name)}')">
+    return `<tr>
       <td class="td-name">${escHtml(st.name)}</td>
       <td>${st.count} 次</td>
       <td><span class="score-pill ${cls}">${st.avgScore}%</span></td>
@@ -1060,7 +861,7 @@ function renderStudentList() {
   const cards = document.getElementById('student-cards');
   cards.innerHTML = students.map(st => {
     const cls = scoreClass(st.avgScore);
-    return `<div class="student-card" onclick="openDetail('${escAttr(st.name)}')">
+    return `<div class="student-card">
       <div>
         <div class="sc-name">${escHtml(st.name)}</div>
         <div class="sc-meta">${st.count} 次練習 &nbsp;·&nbsp; 上次 ${relTime(st.lastTimestamp)}</div>
@@ -1120,99 +921,6 @@ function renderWeakList() {
     </div>`;
   }).join('');
 }
-
-// ── Student Detail ──
-window.openDetail = function(name) {
-  const st = studentsMap[name];
-  if (!st) return;
-  currentStudentName = name;
-
-  document.getElementById('detail-name').textContent = name;
-  document.getElementById('detail-summary').textContent =
-    `共 ${st.count} 次練習 · 平均 ${st.avgScore}%`;
-
-  // Render sessions
-  const body = document.getElementById('detail-body');
-  body.innerHTML = st.sessions.map((s, idx) => {
-    const cls = scoreClass(s.score ?? 0);
-    const dt  = fmtDatetime(s.timestamp);
-    const art = s.articleTitle || '（未知文章）';
-    const secs = fmtSecs(s.secondsSpent);
-    const correct = s.correct ?? '—';
-    const total   = s.total ?? '—';
-
-    const mcqHtml = (s.mcq || []).map(q => {
-      const iconCls = q.isCorrect ? 'correct' : (q.studentAnswer === '（未作答）' ? 'unanswered' : 'wrong');
-      const iconTxt = q.isCorrect ? '✓' : '✗';
-      const ansHtml = q.isCorrect
-        ? `<span class="ans-correct">答對：${escHtml(q.studentAnswer || '')}</span>`
-        : `<span class="ans-wrong">作答：${escHtml(q.studentAnswer || '—')}</span>
-           &nbsp;→&nbsp;
-           <span class="ans-correct">正解：${escHtml(q.correctAnswer || '')}</span>`;
-      return `<div class="mcq-item">
-        <div class="mcq-icon ${iconCls}">${iconTxt}</div>
-        <div class="mcq-body">
-          <div class="mcq-q">${escHtml(q.question || '')}</div>
-          <div class="mcq-ans">${ansHtml}</div>
-        </div>
-      </div>`;
-    }).join('');
-
-    const fillHtml = (s.fill || []).map(f => {
-      const tagsHtml = (f.answers || []).map((ans, i) => {
-        const ok = f.isCorrect?.[i];
-        return `<span class="fill-tag ${ok ? 'correct' : 'wrong'}">${escHtml(ans || '（空白）')}</span>`;
-      }).join('');
-      return `<div class="fill-item">
-        <div class="fill-sentence">${escHtml(f.sentence || '')}</div>
-        <div class="fill-answers">${tagsHtml || '<span style="color:var(--muted);font-size:0.72rem">無填空資料</span>'}</div>
-      </div>`;
-    }).join('');
-
-    const hasDetail = mcqHtml || fillHtml;
-
-    return `<div class="session-item">
-      <button class="session-toggle" onclick="toggleSession(this)" ${!hasDetail ? 'disabled' : ''}>
-        <div class="session-toggle-left">
-          <div class="session-date">${dt}</div>
-          <div class="session-article" title="${escAttr(art)}">${escHtml(art.slice(0,36))}${art.length>36?'…':''}</div>
-        </div>
-        <div class="session-toggle-right">
-          <div><span class="session-score-pill ${cls}">${(s.score ?? '—')}${s.score!=null?'%':''}</span></div>
-          <div class="session-meta-row">${correct}/${total} 題 · ${secs}</div>
-          ${hasDetail ? '<div class="session-chevron" id="chev-' + idx + '">▼</div>' : ''}
-        </div>
-      </button>
-      ${hasDetail ? `<div class="session-detail" id="detail-${idx}">
-        ${mcqHtml ? '<div style="margin-bottom:4px;font-size:0.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);padding:2px 0 6px;border-bottom:1px solid var(--border)">選擇題</div>' + mcqHtml : ''}
-        ${fillHtml ? '<div style="margin-top:12px;margin-bottom:4px;font-size:0.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);padding:2px 0 6px;border-bottom:1px solid var(--border)">填空題</div>' + fillHtml : ''}
-      </div>` : ''}
-    </div>`;
-  }).join('');
-
-  document.getElementById('overlay-bg').classList.add('show');
-  document.getElementById('detail-panel').classList.add('show');
-  document.body.style.overflow = 'hidden';
-};
-
-window.closeDetail = function() {
-  document.getElementById('overlay-bg').classList.remove('show');
-  document.getElementById('detail-panel').classList.remove('show');
-  document.body.style.overflow = '';
-  currentStudentName = null;
-};
-
-window.toggleSession = function(btn) {
-  const idx = [...btn.parentElement.parentElement.children].indexOf(btn.parentElement);
-  // find detail div inside same session-item
-  const item = btn.closest('.session-item');
-  const detail = item.querySelector('.session-detail');
-  const chev   = item.querySelector('.session-chevron');
-  if (!detail) return;
-  const isOpen = detail.classList.contains('open');
-  detail.classList.toggle('open', !isOpen);
-  if (chev) chev.classList.toggle('open', !isOpen);
-};
 
 // ── Tab / Sort ──
 window.switchTab = function(tab) {
