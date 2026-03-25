@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英文新聞閱讀練習</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=Noto+Serif+TC:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1208;
+    --paper: #f5f0e8;
+    --cream: #ede7d6;
+    --accent: #b5451b;
+    --gold: #c9962a;
+    --muted: #7a6e5f;
+    --correct: #2d6a4f;
+    --wrong: #9b2226;
+    --border: #c8bfaa;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Source Serif 4', 'Noto Serif TC', serif;
+    min-height: 100vh;
+    font-size: 16px;
+  }
+
+  /* ── MASTHEAD ── */
+  .masthead {
+    border-bottom: 3px double var(--ink);
+    padding: 14px 16px 12px;
+    text-align: center;
+    background: var(--paper);
+  }
+  .masthead::before {
+    content: '';
+    display: block;
+    border-top: 1px solid var(--ink);
+    margin-bottom: 8px;
+  }
+  .masthead-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.5rem, 6vw, 2.4rem);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .masthead-sub {
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+  .masthead-rule { border: none; border-top: 1px solid var(--ink); margin-top: 10px; }
+
+  /* ── PAGE ── */
+  .page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px 14px 80px;
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+  }
+
+  /* ── LOADING ── */
+  #loading-screen { text-align: center; padding: 70px 20px; }
+  .loading-ring {
+    display: inline-block;
+    width: 48px; height: 48px;
+    border: 3px solid var(--ink);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  /* ── NO CONTENT ── */
+  #no-content-screen {
+    display: none;
+    text-align: center;
+    padding: 60px 20px;
+  }
+  .no-content-icon {
+    font-family: 'Playfair Display', serif;
+    font-size: 3rem;
+    color: var(--border);
+    margin-bottom: 16px;
+  }
+  .no-content-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .no-content-sub {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    line-height: 1.7;
+    margin-bottom: 20px;
+  }
+  .btn-refresh {
+    padding: 10px 22px;
+    background: transparent;
+    border: 1px solid var(--ink);
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-refresh:hover { background: var(--cream); }
+
+  /* ── ERROR ── */
+  #error-screen {
+    display: none;
+    background: #fce4e4;
+    border: 1px solid var(--wrong);
+    padding: 16px;
+    margin: 20px 0;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.83rem;
+    color: var(--wrong);
+  }
+
+  /* ── NAME PANEL ── */
+  #name-panel {
+    display: none;
+    border: 1px solid var(--border);
+    background: white;
+    padding: 28px 20px;
+    box-shadow: 2px 2px 0 var(--border);
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .name-panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .name-panel-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    margin-bottom: 8px;
+  }
+  .article-meta {
+    display: inline-block;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    margin-bottom: 20px;
+    font-family: 'Source Serif 4', serif;
+  }
+  .name-form {
+    display: flex;
+    gap: 10px;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .name-input {
+    flex: 1;
+    padding: 11px 14px;
+    border: 2px solid var(--ink);
+    font-family: 'Noto Serif TC', serif;
+    font-size: 1rem;
+    color: var(--ink);
+    background: white;
+    outline: none;
+    min-height: 48px;
+    text-align: center;
+  }
+  .name-input:focus { border-color: var(--accent); }
+  .btn-start {
+    padding: 11px 18px;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    min-height: 48px;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .btn-start:hover { background: #333; }
+  .name-error {
+    display: none;
+    color: var(--wrong);
+    font-size: 0.78rem;
+    font-family: 'Noto Serif TC', serif;
+    margin-top: 8px;
+  }
+
+  /* ── PRACTICE PANEL ── */
+  #practice-panel { display: none; }
+
+  .student-banner {
+    display: none;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 8px 14px;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    font-family: 'Source Serif 4', serif;
+    margin-bottom: 16px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .student-banner.show { display: flex; }
+  .student-name-display {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  /* Article */
+  .article-display {
+    border: 1px solid var(--border);
+    background: white;
+    padding: 20px 18px;
+    margin-bottom: 24px;
+    box-shadow: 2px 2px 0 var(--border);
+    position: relative;
+  }
+  .article-display::before {
+    content: 'ARTICLE';
+    position: absolute;
+    top: -10px; left: 16px;
+    background: white;
+    padding: 0 8px;
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+  }
+  .article-display p { line-height: 1.85; font-size: 0.93rem; text-align: justify; }
+
+  /* Vocab */
+  .vocab-strip { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 18px; }
+  .vocab-strip-label { font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .vocab-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .vocab-chip {
+    border: 1px solid var(--gold);
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .vocab-chip.tapped { background: var(--gold); color: white; }
+  .vocab-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    z-index: 10;
+    font-style: italic;
+    min-width: 120px;
+    text-align: center;
+    font-family: 'Noto Serif TC', serif;
+    pointer-events: none;
+  }
+  .vocab-chip.tapped .vocab-tooltip { display: block; }
+
+  /* Questions */
+  .questions-section { margin-bottom: 24px; }
+  .q-block {
+    border: 1px solid var(--border);
+    margin-bottom: 12px;
+    background: white;
+    box-shadow: 1px 1px 0 var(--border);
+    overflow: hidden;
+  }
+  .q-header {
+    background: var(--cream);
+    padding: 11px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+  }
+  .q-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+    min-width: 24px;
+    flex-shrink: 0;
+  }
+  .q-text { font-size: 0.9rem; line-height: 1.55; padding-top: 2px; }
+  .q-options { padding: 10px 14px; display: grid; gap: 8px; }
+  .q-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.86rem;
+    line-height: 1.4;
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .q-option:hover { background: var(--cream); border-color: var(--ink); }
+  .q-option.selected { border-color: var(--ink); background: var(--cream); }
+  .q-option.correct { background: #d8f3dc; border-color: var(--correct); color: var(--correct); }
+  .q-option.wrong { background: #fce4e4; border-color: var(--wrong); color: var(--wrong); }
+  .opt-letter {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    min-width: 16px;
+    flex-shrink: 0;
+  }
+  .q-feedback {
+    display: none;
+    padding: 10px 14px;
+    background: var(--cream);
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-family: 'Noto Serif TC', serif;
+    line-height: 1.6;
+  }
+  .q-feedback.show { display: block; }
+
+  /* Fill-in */
+  .fill-blank { padding: 14px; font-size: 0.9rem; line-height: 2.2; }
+  .blank-input {
+    border: none;
+    border-bottom: 2px solid var(--ink);
+    background: transparent;
+    font-family: 'Source Serif 4', serif;
+    font-size: 0.9rem;
+    padding: 0 4px;
+    width: 110px;
+    text-align: center;
+    outline: none;
+    color: var(--ink);
+  }
+  .blank-input.correct { border-bottom-color: var(--correct); color: var(--correct); }
+  .blank-input.wrong   { border-bottom-color: var(--wrong);   color: var(--wrong); }
+
+  /* Discussion */
+  .discussion-q { padding: 14px; }
+  .discussion-q p {
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: var(--muted);
+    font-style: italic;
+    border-left: 3px solid var(--gold);
+    padding-left: 12px;
+    font-family: 'Noto Serif TC', serif;
+  }
+
+  /* Score bar */
+  .score-bar {
+    display: none;
+    border: 1px solid var(--border);
+    background: var(--cream);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    align-items: center;
+    gap: 16px;
+  }
+  .score-bar.show { display: flex; }
+  .score-circle {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+  .score-text { font-size: 0.86rem; line-height: 1.6; font-family: 'Noto Serif TC', serif; }
+  .score-label { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+
+  /* Buttons */
+  .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 12px 20px;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-height: 46px;
+    flex: 1;
+    text-align: center;
+  }
+  .btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .btn-primary:hover { background: #333; }
+  .btn-secondary { background: transparent; color: var(--ink); border-color: var(--ink); }
+  .btn-secondary:hover { background: var(--cream); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 20px;
+    font-family: 'Noto Serif TC', serif;
+    font-size: 0.82rem;
+    z-index: 100;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-title">The English Press</div>
+  <div class="masthead-sub">英文新聞閱讀練習 &nbsp;·&nbsp; Student Edition</div>
+  <hr class="masthead-rule">
+</header>
+
+<div class="page">
+
+  <!-- Loading -->
+  <div id="loading-screen">
+    <div class="loading-ring"></div>
+    <div class="loading-text">載入題目中⋯</div>
+  </div>
+
+  <!-- No content -->
+  <div id="no-content-screen">
+    <div class="no-content-icon">✦</div>
+    <div class="no-content-title">尚未發布題目</div>
+    <div class="no-content-sub">老師還沒有發布練習題。<br>請稍候，或詢問老師是否已發布。</div>
+    <button class="btn-refresh" onclick="location.reload()">↺ 重新整理</button>
+  </div>
+
+  <!-- Error -->
+  <div id="error-screen"></div>
+
+  <!-- Name Panel -->
+  <div id="name-panel">
+    <div class="name-panel-title">請輸入姓名開始作答</div>
+    <div class="name-panel-sub" id="article-meta-text"></div>
+    <div id="article-meta-badge" class="article-meta"></div>
+    <div class="name-form">
+      <input class="name-input" type="text" id="student-name-input"
+             placeholder="你的姓名" maxlength="20"
+             onkeydown="if(event.key==='Enter') startPractice()" />
+      <button class="btn-start" onclick="startPractice()">開始作答</button>
+    </div>
+    <div class="name-error" id="name-error">請輸入姓名後再開始。</div>
+  </div>
+
+  <!-- Practice Panel -->
+  <div id="practice-panel">
+
+    <div class="student-banner" id="student-banner">
+      <span id="student-banner-name"></span>
+      <span id="student-banner-date" style="font-size:0.62rem;opacity:0.7"></span>
+    </div>
+
+    <div class="section-label">Article</div>
+    <div class="article-display">
+      <p id="article-display-text"></p>
+      <div class="vocab-strip" id="vocab-strip" style="display:none">
+        <div class="vocab-strip-label">Key Vocabulary — 點擊查看中文解釋</div>
+        <div class="vocab-list" id="vocab-list"></div>
+      </div>
+    </div>
+
+    <div class="score-bar" id="score-bar">
+      <div class="score-circle" id="score-circle">—</div>
+      <div class="score-text">
+        <div class="score-label" id="score-label"></div>
+        <div id="score-detail"></div>
+      </div>
+    </div>
+
+    <div id="mcq-section" class="questions-section">
+      <div class="section-label">Reading Comprehension — 閱讀理解選擇題</div>
+      <div id="mcq-container"></div>
+    </div>
+
+    <div id="fill-section" class="questions-section" style="display:none">
+      <div class="section-label">Summary Fill-in-the-Blank — 摘要填空</div>
+      <div id="fill-container"></div>
+    </div>
+
+    <div id="discussion-section" class="questions-section">
+      <div class="section-label">Discussion — 延伸討論問題</div>
+      <div id="discussion-container"></div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-primary" id="check-btn" onclick="checkAnswers()">批改作答</button>
+      <button class="btn btn-secondary" id="retry-btn" style="display:none" onclick="retryPractice()">再做一次</button>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/**
+ * Firebase config — apiKey 在此嵌入是 Firebase 官方作法。
+ * Web API Key 是公開識別碼，安全性由 Firebase Security Rules 控管，
+ * 詳見 https://firebase.google.com/docs/projects/api-keys
+ */
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
+import { getDatabase, ref, get, push } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey:            'AIzaSyDoyvvRV3cw8JAoatIkWX4Fot6YmZH1czo',
+  authDomain:        'news-english-ef2e4.firebaseapp.com',
+  databaseURL:       'https://news-english-ef2e4-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId:         'news-english-ef2e4',
+  storageBucket:     'news-english-ef2e4.firebasestorage.app',
+  messagingSenderId: '1039973180615',
+  appId:             '1:1039973180615:web:dca063a42dbf9fb228cae2',
+  measurementId:     'G-1ELC7Y97MF'
+};
+
+let db;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+} catch(e) {
+  window._fbError = e.message;
+}
+
+// 讀取老師發布的題目
+window._loadPublished = async function() {
+  if (!db) return { ok: false, err: window._fbError || 'Firebase 初始化失敗' };
+  try {
+    const snap = await get(ref(db, 'published'));
+    if (!snap.exists()) return { ok: true, data: null };
+    return { ok: true, data: snap.val() };
+  } catch(e) {
+    return { ok: false, err: e.message };
+  }
+};
+
+// 儲存學生答題紀錄
+window._saveSession = async function(sessionData) {
+  if (!db) return false;
+  try {
+    await push(ref(db, 'sessions'), sessionData);
+    return true;
+  } catch(e) {
+    console.warn('[Firebase] 儲存失敗：', e.message);
+    return false;
+  }
+};
+</script>
+
+<script>
+// ── STATE ──
+let publishedPayload = null;   // full payload from Firebase /published
+let practiceData     = null;   // { vocab, mcq, fill, discussion }
+let answeredMCQ      = {};
+let checked          = false;
+let currentStudent   = '';
+let practiceStartTime = null;
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  // Wait for module to register functions
+  setTimeout(loadPublished, 300);
+});
+
+async function loadPublished() {
+  if (typeof window._loadPublished !== 'function') {
+    showError('Firebase 模組載入失敗，請重新整理頁面。');
+    return;
+  }
+  const result = await window._loadPublished();
+  document.getElementById('loading-screen').style.display = 'none';
+
+  if (!result.ok) {
+    showError('無法連線到 Firebase：' + result.err);
+    return;
+  }
+  if (!result.data) {
+    document.getElementById('no-content-screen').style.display = 'block';
+    return;
+  }
+
+  publishedPayload = result.data;
+  practiceData     = result.data.data;
+  showNamePanel(result.data);
+}
+
+// ── NAME PANEL ──
+function showNamePanel(payload) {
+  const d = new Date(payload.publishedAt);
+  const dateStr = isNaN(d) ? '' :
+    d.toLocaleDateString('zh-TW', { month:'2-digit', day:'2-digit' }) + ' ' +
+    d.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
+
+  document.getElementById('article-meta-text').textContent = payload.articleTitle || '';
+  document.getElementById('article-meta-badge').textContent =
+    payload.level + ' &nbsp;·&nbsp; 發布時間 ' + dateStr;
+  document.getElementById('article-meta-badge').innerHTML =
+    escHtml(payload.level) + ' &nbsp;·&nbsp; 發布時間 ' + escHtml(dateStr);
+
+  document.getElementById('name-panel').style.display = 'block';
+  setTimeout(() => document.getElementById('student-name-input').focus(), 100);
+}
+
+function startPractice() {
+  const name = document.getElementById('student-name-input').value.trim();
+  const errEl = document.getElementById('name-error');
+  if (!name) { errEl.style.display = 'block'; return; }
+  errEl.style.display = 'none';
+  currentStudent    = name;
+  practiceStartTime = Date.now();
+
+  document.getElementById('name-panel').style.display = 'none';
+  renderPractice();
+}
+
+// ── RENDER ──
+function renderPractice() {
+  const payload = publishedPayload;
+  const data    = practiceData;
+
+  // Banner
+  const now = new Date();
+  document.getElementById('student-banner').classList.add('show');
+  document.getElementById('student-banner-name').innerHTML =
+    `學生：<span class="student-name-display">${escHtml(currentStudent)}</span>`;
+  document.getElementById('student-banner-date').textContent =
+    now.toLocaleDateString('zh-TW') + ' ' +
+    now.toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
+
+  // Article
+  document.getElementById('article-display-text').textContent = payload.article || '';
+
+  // Vocab
+  if (data.vocab && data.vocab.length) {
+    document.getElementById('vocab-strip').style.display = 'block';
+    document.getElementById('vocab-list').innerHTML = data.vocab.map(v =>
+      `<div class="vocab-chip" onclick="tapVocab(this)">
+        ${escHtml(v.word)} <em style="font-size:0.68rem;color:var(--muted)">(${escHtml(v.pos)})</em>
+        <div class="vocab-tooltip">${escHtml(v.zh)}</div>
+      </div>`
+    ).join('');
+  }
+
+  // MCQ
+  answeredMCQ = {};
+  const mcqC = document.getElementById('mcq-container');
+  mcqC.innerHTML = '';
+  (data.mcq || []).forEach((q, qi) => {
+    const block = document.createElement('div');
+    block.className = 'q-block';
+    block.innerHTML = `
+      <div class="q-header">
+        <div class="q-num">${qi + 1}</div>
+        <div class="q-text">${escHtml(q.q)}</div>
+      </div>
+      <div class="q-options">
+        ${q.opts.map((opt, oi) =>
+          `<div class="q-option" onclick="selectMCQ(${qi},${oi})" id="opt-${qi}-${oi}">
+            <span class="opt-letter">${['A','B','C','D'][oi]}</span>
+            <span>${escHtml(opt.replace(/^[A-D]\.\s*/,''))}</span>
+          </div>`
+        ).join('')}
+      </div>
+      <div class="q-feedback" id="feedback-${qi}">💡 ${escHtml(q.explain)}</div>
+    `;
+    mcqC.appendChild(block);
+  });
+
+  // Fill-in
+  const fillCount = payload.fillCount || 0;
+  if (fillCount > 0 && data.fill && data.fill.length) {
+    document.getElementById('fill-section').style.display = 'block';
+    const fc = document.getElementById('fill-container');
+    fc.innerHTML = '';
+    data.fill.forEach((item, fi) => {
+      const block = document.createElement('div');
+      block.className = 'q-block';
+      let bi = 0;
+      const html = item.sentence.replace(/___/g, () => {
+        const idx = bi++;
+        return `<input class="blank-input" type="text" id="blank-${fi}-${idx}"
+          placeholder="___" data-ans="${escHtml(item.blanks[idx]||'')}"
+          autocomplete="off" autocorrect="off" spellcheck="false">`;
+      });
+      block.innerHTML = `
+        <div class="q-header">
+          <div class="q-num">${fi + 1}</div>
+          <div class="q-text" style="color:var(--muted);font-size:0.8rem;font-style:italic">${escHtml(item.zh_hint)}</div>
+        </div>
+        <div class="fill-blank">${html}</div>
+      `;
+      fc.appendChild(block);
+    });
+  }
+
+  // Discussion
+  const dc = document.getElementById('discussion-container');
+  dc.innerHTML = '';
+  (data.discussion || []).forEach((item, di) => {
+    const block = document.createElement('div');
+    block.className = 'q-block';
+    block.innerHTML = `
+      <div class="q-header">
+        <div class="q-num">${di + 1}</div>
+        <div class="q-text">${escHtml(item.q)}</div>
+      </div>
+      <div class="discussion-q"><p>${escHtml(item.zh)}</p></div>
+    `;
+    dc.appendChild(block);
+  });
+
+  checked = false;
+  document.getElementById('score-bar').classList.remove('show');
+  document.getElementById('practice-panel').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function selectMCQ(qi, oi) {
+  if (checked) return;
+  answeredMCQ[qi] = oi;
+  document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach(o => o.classList.remove('selected'));
+  document.getElementById(`opt-${qi}-${oi}`).classList.add('selected');
+}
+
+function tapVocab(el) {
+  const was = el.classList.contains('tapped');
+  document.querySelectorAll('.vocab-chip').forEach(c => c.classList.remove('tapped'));
+  if (!was) el.classList.add('tapped');
+}
+
+// ── CHECK ──
+function checkAnswers() {
+  if (!practiceData || checked) return;
+  checked = true;
+  let correct = 0;
+  const total = practiceData.mcq.length;
+
+  // Collect fill answers before grading
+  const fillAnswers = [];
+  if (practiceData.fill) {
+    practiceData.fill.forEach((item, fi) => {
+      const rec = { sentence: item.sentence, answers: [], isCorrect: [] };
+      (item.blanks || []).forEach((ans, bi) => {
+        const inp = document.getElementById(`blank-${fi}-${bi}`);
+        const val = inp ? inp.value.trim() : '';
+        rec.answers.push(val);
+        const norm = val.toLowerCase(), exp = ans.toLowerCase();
+        rec.isCorrect.push(norm === exp || norm.includes(exp) || exp.includes(norm));
+      });
+      fillAnswers.push(rec);
+    });
+  }
+
+  // Grade MCQ
+  practiceData.mcq.forEach((q, qi) => {
+    const chosen = answeredMCQ[qi];
+    document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach((o, oi) => {
+      if (oi === q.ans) o.classList.add('correct');
+      else if (oi === chosen && chosen !== q.ans) o.classList.add('wrong');
+    });
+    document.getElementById(`feedback-${qi}`).classList.add('show');
+    if (chosen === q.ans) correct++;
+  });
+
+  // Grade fill
+  if (practiceData.fill) {
+    practiceData.fill.forEach((item, fi) => {
+      (item.blanks || []).forEach((ans, bi) => {
+        const inp = document.getElementById(`blank-${fi}-${bi}`);
+        if (!inp) return;
+        const ok = fillAnswers[fi]?.isCorrect[bi];
+        inp.disabled = true;
+        inp.classList.add(ok ? 'correct' : 'wrong');
+        if (!ok) inp.value = ans;
+      });
+    });
+  }
+
+  // Score display
+  const pct = Math.round(correct / total * 100);
+  document.getElementById('score-bar').classList.add('show');
+  document.getElementById('score-circle').textContent = pct + '%';
+  document.getElementById('score-label').textContent =
+    pct >= 80 ? '🎉 表現優秀！' : pct >= 60 ? '👍 繼續加油！' : '📖 建議重讀文章';
+  document.getElementById('score-detail').innerHTML =
+    `<strong>${escHtml(currentStudent)}</strong> 答對 <strong>${correct} / ${total}</strong> 題`;
+  document.getElementById('score-bar').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Show retry button
+  document.getElementById('check-btn').style.display = 'none';
+  document.getElementById('retry-btn').style.display = 'block';
+
+  // Save to Firebase
+  const secondsSpent = practiceStartTime
+    ? Math.round((Date.now() - practiceStartTime) / 1000) : 0;
+  const sessionData = {
+    studentName:  currentStudent,
+    timestamp:    new Date().toISOString(),
+    secondsSpent,
+    articleTitle: publishedPayload.articleTitle || '',
+    level:        publishedPayload.level || '',
+    score: pct, correct, total,
+    mcq: practiceData.mcq.map((q, qi) => ({
+      question:      q.q,
+      studentAnswer: answeredMCQ[qi] != null
+        ? q.opts[answeredMCQ[qi]].replace(/^[A-D]\.\s*/,'') : '（未作答）',
+      correctAnswer: q.opts[q.ans].replace(/^[A-D]\.\s*/,''),
+      isCorrect:     answeredMCQ[qi] === q.ans
+    })),
+    fill: fillAnswers
+  };
+
+  if (typeof window._saveSession === 'function') {
+    window._saveSession(sessionData)
+      .then(ok => showToast(ok ? '作答已儲存 ✓' : '作答完成（離線模式）'));
+  } else {
+    showToast('作答完成');
+  }
+}
+
+// ── RETRY ──
+function retryPractice() {
+  answeredMCQ = {};
+  checked = false;
+  practiceStartTime = Date.now();
+  document.getElementById('check-btn').style.display = 'block';
+  document.getElementById('retry-btn').style.display = 'none';
+  document.getElementById('score-bar').classList.remove('show');
+  // Re-render practice
+  document.getElementById('practice-panel').style.display = 'none';
+  document.getElementById('vocab-strip').style.display = 'none';
+  renderPractice();
+}
+
+// ── HELPERS ──
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showError(msg) {
+  document.getElementById('loading-screen').style.display = 'none';
+  const el = document.getElementById('error-screen');
+  el.style.display = 'block';
+  el.textContent = '錯誤：' + msg;
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
