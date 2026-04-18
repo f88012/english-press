@@ -32,21 +32,25 @@ const BOT_CONFIG = {
 期待為大家解答英文問題！😊`
   },
   "U45ed153ac9a4c65ec21dc3eb446649c1": {
-    // Ivy's English
-    name: "Ivy's English",
+    // Ivy's English - Calendar Reminder Bot
+    name: "Ivy's English Calendar",
+    role: "calendar",
     channelId: 2009819826,
     secretEnvVar: "LINE_CHANNEL_SECRET_BOT2",
     tokenEnvVar: "LINE_CHANNEL_ACCESS_TOKEN_BOT2",
-    joinMessage: `大家好！我是 Ivy's English 👋
+    joinMessage: `大家好！我是 Ivy's English 行事曆提醒機器人 📅
 
-使用方式：
-在訊息中 @Bot 並提問即可
+功能：
+🔔 每天早上自動提醒隔日行程
+📋 查詢今日/明日/本週行程
 
-例如：
-@Bot 文法: is 和 are 的差別
-@Bot 單字: serendipity
+查詢方式（直接輸入關鍵字）：
+今日行程 / 今天 → 今天的所有活動
+明日行程 / 明天 → 明天的所有活動
+本週行程 / 這週 → 本週的所有活動
+下一個活動 → 最近即將開始的活動
 
-期待為大家解答英文問題！😊`
+期待為大家提供貼心的行程提醒！😊`
   }
 };
 
@@ -1154,6 +1158,242 @@ function getHelpMessage() {
 有任何英文問題都可以問我！💪`;
 }
 
+// ========== 行事曆 Bot 功能 ==========
+
+/**
+ * 推送 LINE 訊息（主動推送，無需 replyToken）
+ * @param {string} to - 用戶 ID、群組 ID 或房間 ID
+ * @param {object} message - 訊息物件
+ * @param {string} token - LINE Channel Access Token
+ * @returns {Promise}
+ */
+async function pushLineMessage(to, message, token) {
+  return new Promise((resolve, reject) => {
+    if (!token) {
+      console.error("[ERROR] LINE token not provided");
+      return reject(new Error("LINE token is required"));
+    }
+
+    const data = JSON.stringify({
+      to: to,
+      messages: [message]
+    });
+
+    const options = {
+      hostname: "api.line.me",
+      port: 443,
+      path: "/v2/bot/message/push",
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(data, 'utf8'),
+        "Authorization": `Bearer ${token}`
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let responseData = "";
+      res.on("data", (chunk) => {
+        responseData += chunk;
+      });
+      res.on("end", () => {
+        if (res.statusCode === 200) {
+          console.log("[INFO] Push message sent successfully");
+          resolve(responseData);
+        } else {
+          console.error(`[ERROR] Failed to push: ${res.statusCode}`, responseData);
+          reject(new Error(`HTTP ${res.statusCode}`));
+        }
+      });
+    });
+
+    req.on("error", (error) => {
+      console.error("[ERROR] HTTP request error:", error.message);
+      reject(error);
+    });
+
+    req.write(data);
+    req.end();
+  });
+}
+
+/**
+ * 從 Google Calendar iCal URL 取得事件
+ * @param {string} icalUrl - iCal 公開連結
+ * @returns {Promise<Array>} 事件陣列
+ */
+async function fetchCalendarEvents(icalUrl) {
+  try {
+    if (!icalUrl) {
+      console.warn("[WARN] GOOGLE_CALENDAR_ICAL_URL not set");
+      return [];
+    }
+
+    const ical = require("node-ical");
+    const events = await ical.async.fromURL(icalUrl);
+
+    const result = [];
+    for (const key in events) {
+      const event = events[key];
+      if (event.type === "VEVENT") {
+        result.push({
+          id: event.uid || key,
+          title: event.summary || "無標題",
+          start: new Date(event.start),
+          end: new Date(event.end),
+          location: event.location || "",
+          description: event.description || ""
+        });
+      }
+    }
+
+    return result.sort((a, b) => a.start - b.start);
+  } catch (error) {
+    console.error("[ERROR] Failed to fetch calendar events:", error.message);
+    return [];
+  }
+}
+
+/**
+ * 檢測行事曆相關的用戶意圖（中文關鍵字）
+ * @param {string} text - 用戶訊息
+ * @returns {string} 意圖：today | tomorrow | week | next | unknown
+ */
+function detectCalendarIntent(text) {
+  if (/今日|今天/.test(text)) return "today";
+  if (/明日|明天/.test(text)) return "tomorrow";
+  if (/本週|這週|本周|這周/.test(text)) return "week";
+  if (/下一個|下個|最近|下一|接下來/.test(text)) return "next";
+  return "unknown";
+}
+
+/**
+ * 格式化行事曆事件為 LINE 訊息
+ * @param {Array} events - 事件陣列
+ * @param {string} label - 標籤（例如「今日」「明日」）
+ * @returns {string} 格式化後的訊息
+ */
+function formatCalendarEvents(events, label) {
+  if (!events || events.length === 0) {
+    return `📅 ${label}\n\n${label}沒有行程 😊`;
+  }
+
+  let message = `📅 ${label}行程\n`;
+
+  for (const evt of events) {
+    const startStr = evt.start.toLocaleDateString("zh-TW", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short"
+    });
+    const startTime = evt.start.toLocaleTimeString("zh-TW", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    const endTime = evt.end.toLocaleTimeString("zh-TW", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    message += `\n📌 ${evt.title}`;
+    message += `\n🕐 ${startStr} ${startTime} - ${endTime}`;
+
+    if (evt.location) {
+      message += `\n📍 ${evt.location}`;
+    }
+
+    if (evt.description) {
+      message += `\n📝 ${evt.description}`;
+    }
+
+    message += `\n──────────`;
+  }
+
+  return message;
+}
+
+/**
+ * 處理行事曆相關訊息（Ivy's English Bot）
+ * @param {string} userMessage - 用戶訊息
+ * @param {string} replyToken - 回覆令牌
+ * @param {string} token - LINE Channel Access Token
+ */
+async function handleCalendarMessage(userMessage, replyToken, token) {
+  try {
+    const intent = detectCalendarIntent(userMessage);
+    const events = await fetchCalendarEvents(process.env.GOOGLE_CALENDAR_ICAL_URL);
+
+    let relevantEvents = [];
+    let label = "";
+
+    if (intent === "today") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      relevantEvents = events.filter(e => e.start >= today && e.start < tomorrow);
+      label = "今日";
+    } else if (intent === "tomorrow") {
+      const tomorrow = new Date();
+      tomorrow.setHours(0, 0, 0, 0);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dayAfter = new Date(tomorrow);
+      dayAfter.setDate(dayAfter.getDate() + 1);
+
+      relevantEvents = events.filter(e => e.start >= tomorrow && e.start < dayAfter);
+      label = "明日";
+    } else if (intent === "week") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const day = today.getDay();
+      const diff = today.getDate() - day;
+      const weekStart = new Date(today.setDate(diff));
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+
+      relevantEvents = events.filter(e => e.start >= weekStart && e.start < weekEnd);
+      label = "本週";
+    } else if (intent === "next") {
+      const now = new Date();
+      relevantEvents = events.filter(e => e.start > now);
+      if (relevantEvents.length > 0) {
+        relevantEvents = [relevantEvents[0]];
+      }
+      label = "下一個活動";
+    } else {
+      const helpMessage = `🎯 Ivy's English 行事曆助手
+
+使用方式：
+✅ 傳「今日行程」或「今天」→ 查詢今日行程
+✅ 傳「明日行程」或「明天」→ 查詢明日行程
+✅ 傳「本週行程」或「這週」→ 查詢本週行程
+✅ 傳「下一個活動」→ 查詢最近即將開始的活動
+
+🔔 每天早上 8:00 自動推送隔日行程提醒`;
+
+      await replyLineMessage(replyToken, {
+        type: "text",
+        text: helpMessage
+      }, token);
+      return;
+    }
+
+    const formattedMessage = formatCalendarEvents(relevantEvents, label);
+    await replyLineMessage(replyToken, {
+      type: "text",
+      text: formattedMessage
+    }, token);
+  } catch (error) {
+    console.error("[ERROR] Calendar message handling failed:", error.message);
+    await replyLineMessage(replyToken, {
+      type: "text",
+      text: "抱歉，無法取得行程資訊。請稍後重試。"
+    }, token);
+  }
+}
+
 // ========== 主要流程 ==========
 
 /**
@@ -1352,7 +1592,12 @@ app.post("/", async (req, res) => {
         }
 
         // 處理訊息（一對一 或 群組中被提及的訊息）
-        await handleTextMessage(userMessage, event.replyToken, botCredentials.token);
+        // 根據 Bot 角色分流
+        if (botConfig.role === "calendar") {
+          await handleCalendarMessage(userMessage, event.replyToken, botCredentials.token);
+        } else {
+          await handleTextMessage(userMessage, event.replyToken, botCredentials.token);
+        }
       }
       // 處理 join 事件（Bot 被加入群組）
       else if (event.type === "join") {
@@ -1380,6 +1625,84 @@ app.post("/", async (req, res) => {
   } catch (error) {
     console.error("[ERROR] Webhook error:", error.message);
     res.status(500).json({error: error.message});
+  }
+});
+
+// ========== 行事曆定時提醒 (Cloud Scheduler) ==========
+
+const {onSchedule} = require("firebase-functions/v2/scheduler");
+
+/**
+ * 每天早上 8:00 檢查並推送隔日行程提醒
+ */
+exports.calendarReminder = onSchedule("0 8 * * *", async (event) => {
+  try {
+    console.log("[INFO] Calendar reminder job started");
+
+    // 1. 讀取環境變數
+    const icalUrl = process.env.GOOGLE_CALENDAR_ICAL_URL;
+    const groupIds = (process.env.CALENDAR_NOTIFY_GROUP_ID || "").split(",").filter(id => id.trim());
+    const token = getCredential("LINE_CHANNEL_ACCESS_TOKEN_BOT2");
+
+    if (groupIds.length === 0) {
+      console.warn("[WARN] CALENDAR_NOTIFY_GROUP_ID not set");
+      return;
+    }
+
+    // 2. 取得行事曆事件
+    const events = await fetchCalendarEvents(icalUrl);
+    console.log(`[INFO] Fetched ${events.length} calendar events`);
+
+    // 3. 篩選「明天」的事件（活動前 1 天）
+    const tomorrow = new Date();
+    tomorrow.setHours(0, 0, 0, 0);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dayAfter = new Date(tomorrow);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+
+    const tomorrowEvents = events.filter(e => e.start >= tomorrow && e.start < dayAfter);
+    console.log(`[INFO] Found ${tomorrowEvents.length} events for tomorrow`);
+
+    if (tomorrowEvents.length === 0) {
+      console.log("[INFO] No events tomorrow, skipping notification");
+      return;
+    }
+
+    // 4. 初始化 Firebase
+    initializeFirebase();
+
+    // 5. 逐一檢查和推送通知
+    for (const evt of tomorrowEvents) {
+      const sentRef = dbRef.ref(`/calendar-sent/${evt.id}`);
+      const snap = await sentRef.get();
+
+      if (snap.exists()) {
+        console.log(`[INFO] Event "${evt.title}" already sent, skipping`);
+        continue;
+      }
+
+      // 推送到所有配置的群組
+      const message = formatCalendarEvents([evt], "明日");
+      for (const gid of groupIds) {
+        try {
+          await pushLineMessage(gid.trim(), { type: "text", text: message }, token);
+          console.log(`[INFO] Sent notification for "${evt.title}" to group ${gid}`);
+        } catch (pushError) {
+          console.error(`[ERROR] Failed to push to ${gid}:`, pushError.message);
+        }
+      }
+
+      // 記錄已發送
+      await sentRef.set({
+        sentAt: Date.now(),
+        eventTitle: evt.title,
+        eventStart: evt.start.toISOString()
+      });
+    }
+
+    console.log("[INFO] Calendar reminder job completed successfully");
+  } catch (error) {
+    console.error("[ERROR] Calendar reminder job failed:", error.message);
   }
 });
 
