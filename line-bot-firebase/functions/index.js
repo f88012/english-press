@@ -1257,14 +1257,66 @@ async function fetchCalendarEvents(icalUrl) {
 /**
  * 檢測行事曆相關的用戶意圖（中文關鍵字）
  * @param {string} text - 用戶訊息
- * @returns {string} 意圖：today | tomorrow | week | next | unknown
+ * @returns {string} 意圖：subscribe | unsubscribe | today | tomorrow | week | next | unknown
  */
 function detectCalendarIntent(text) {
+  if (/開啟提醒|訂閱提醒|加入提醒|開始提醒/.test(text)) return "subscribe";
+  if (/關閉提醒|取消提醒|退出提醒|停止提醒/.test(text)) return "unsubscribe";
   if (/今日|今天/.test(text)) return "today";
   if (/明日|明天/.test(text)) return "tomorrow";
   if (/本週|這週|本周|這周/.test(text)) return "week";
   if (/下一個|下個|最近|下一|接下來/.test(text)) return "next";
   return "unknown";
+}
+
+/**
+ * 訂閱行事曆提醒
+ * @param {string} userId - LINE 用戶 ID
+ */
+async function subscribeUser(userId) {
+  try {
+    initializeFirebase();
+    await dbRef.ref(`/calendar-subscribers/${userId}`).set({
+      subscribedAt: Date.now()
+    });
+    console.log(`[INFO] User ${userId} subscribed to calendar reminders`);
+  } catch (error) {
+    console.error("[ERROR] Failed to subscribe user:", error.message);
+    throw error;
+  }
+}
+
+/**
+ * 取消訂閱行事曆提醒
+ * @param {string} userId - LINE 用戶 ID
+ */
+async function unsubscribeUser(userId) {
+  try {
+    initializeFirebase();
+    await dbRef.ref(`/calendar-subscribers/${userId}`).remove();
+    console.log(`[INFO] User ${userId} unsubscribed from calendar reminders`);
+  } catch (error) {
+    console.error("[ERROR] Failed to unsubscribe user:", error.message);
+    throw error;
+  }
+}
+
+/**
+ * 取得所有訂閱者
+ * @returns {Promise<Array>} 訂閱者的 userId 陣列
+ */
+async function getSubscribers() {
+  try {
+    initializeFirebase();
+    const snap = await dbRef.ref("/calendar-subscribers").get();
+    if (!snap.exists()) return [];
+    const subscribers = Object.keys(snap.val());
+    console.log(`[INFO] Found ${subscribers.length} calendar subscribers`);
+    return subscribers;
+  } catch (error) {
+    console.error("[ERROR] Failed to get subscribers:", error.message);
+    return [];
+  }
 }
 
 /**
@@ -1314,14 +1366,49 @@ function formatCalendarEvents(events, label) {
 }
 
 /**
+ * 建立提醒訊息（個性化格式）
+ * @param {object} evt - 事件物件
+ * @returns {string} 提醒訊息
+ */
+function buildReminderMessage(evt) {
+  let msg = `嗨！提醒老師，記得明天是【${evt.title}】喔！`;
+  if (evt.location) msg += `\n📍 地點：${evt.location}`;
+  if (evt.description) msg += `\n📝 備註：${evt.description}`;
+  msg += `\n\n請做好準備，加油！💪`;
+  return msg;
+}
+
+/**
  * 處理行事曆相關訊息（Ivy's English Bot）
  * @param {string} userMessage - 用戶訊息
  * @param {string} replyToken - 回覆令牌
  * @param {string} token - LINE Channel Access Token
+ * @param {string} userId - 用戶 ID（來自 LINE event.source）
  */
-async function handleCalendarMessage(userMessage, replyToken, token) {
+async function handleCalendarMessage(userMessage, replyToken, token, userId) {
   try {
     const intent = detectCalendarIntent(userMessage);
+
+    // 處理訂閱/取消訂閱
+    if (intent === "subscribe") {
+      await subscribeUser(userId);
+      await replyLineMessage(replyToken, {
+        type: "text",
+        text: "✅ 已開啟行事曆提醒！\n\n每天早上 8:00 會自動推送隔日行程提醒給您 😊"
+      }, token);
+      return;
+    }
+
+    if (intent === "unsubscribe") {
+      await unsubscribeUser(userId);
+      await replyLineMessage(replyToken, {
+        type: "text",
+        text: "🔕 已關閉行事曆提醒。\n\n如需重新開啟，請傳送「開啟提醒」😊"
+      }, token);
+      return;
+    }
+
+    // 查詢行程
     const events = await fetchCalendarEvents(process.env.GOOGLE_CALENDAR_ICAL_URL);
 
     let relevantEvents = [];
@@ -1365,13 +1452,17 @@ async function handleCalendarMessage(userMessage, replyToken, token) {
     } else {
       const helpMessage = `🎯 Ivy's English 行事曆助手
 
-使用方式：
-✅ 傳「今日行程」或「今天」→ 查詢今日行程
-✅ 傳「明日行程」或「明天」→ 查詢明日行程
-✅ 傳「本週行程」或「這週」→ 查詢本週行程
-✅ 傳「下一個活動」→ 查詢最近即將開始的活動
+訂閱功能：
+🔔 傳「開啟提醒」→ 訂閱每日行程提醒
+🔕 傳「關閉提醒」→ 取消訂閱
 
-🔔 每天早上 8:00 自動推送隔日行程提醒`;
+查詢功能：
+📅 傳「今日行程」或「今天」→ 查詢今日行程
+📅 傳「明日行程」或「明天」→ 查詢明日行程
+📅 傳「本週行程」或「這週」→ 查詢本週行程
+📅 傳「下一個活動」→ 查詢最近即將開始的活動
+
+每天早上 8:00 自動推送隔日提醒給已訂閱的老師 😊`;
 
       await replyLineMessage(replyToken, {
         type: "text",
@@ -1594,7 +1685,7 @@ app.post("/", async (req, res) => {
         // 處理訊息（一對一 或 群組中被提及的訊息）
         // 根據 Bot 角色分流
         if (botConfig.role === "calendar") {
-          await handleCalendarMessage(userMessage, event.replyToken, botCredentials.token);
+          await handleCalendarMessage(userMessage, event.replyToken, botCredentials.token, event.source.userId);
         } else {
           await handleTextMessage(userMessage, event.replyToken, botCredentials.token);
         }
@@ -1639,15 +1730,17 @@ exports.calendarReminder = onSchedule("0 8 * * *", async (event) => {
   try {
     console.log("[INFO] Calendar reminder job started");
 
-    // 1. 讀取環境變數
+    // 1. 讀取環境變數和訂閱者
     const icalUrl = process.env.GOOGLE_CALENDAR_ICAL_URL;
-    const groupIds = (process.env.CALENDAR_NOTIFY_GROUP_ID || "").split(",").filter(id => id.trim());
     const token = getCredential("LINE_CHANNEL_ACCESS_TOKEN_BOT2");
+    const subscribers = await getSubscribers();
 
-    if (groupIds.length === 0) {
-      console.warn("[WARN] CALENDAR_NOTIFY_GROUP_ID not set");
+    if (subscribers.length === 0) {
+      console.log("[INFO] No calendar subscribers, skipping");
       return;
     }
+
+    console.log(`[INFO] Found ${subscribers.length} subscribers`);
 
     // 2. 取得行事曆事件
     const events = await fetchCalendarEvents(icalUrl);
@@ -1671,33 +1764,34 @@ exports.calendarReminder = onSchedule("0 8 * * *", async (event) => {
     // 4. 初始化 Firebase
     initializeFirebase();
 
-    // 5. 逐一檢查和推送通知
+    // 5. 逐一檢查和推送通知（給每個訂閱者）
     for (const evt of tomorrowEvents) {
-      const sentRef = dbRef.ref(`/calendar-sent/${evt.id}`);
-      const snap = await sentRef.get();
+      for (const userId of subscribers) {
+        const key = `${evt.id}_${userId}`;
+        const sentRef = dbRef.ref(`/calendar-sent/${key}`);
+        const snap = await sentRef.get();
 
-      if (snap.exists()) {
-        console.log(`[INFO] Event "${evt.title}" already sent, skipping`);
-        continue;
-      }
-
-      // 推送到所有配置的群組
-      const message = formatCalendarEvents([evt], "明日");
-      for (const gid of groupIds) {
-        try {
-          await pushLineMessage(gid.trim(), { type: "text", text: message }, token);
-          console.log(`[INFO] Sent notification for "${evt.title}" to group ${gid}`);
-        } catch (pushError) {
-          console.error(`[ERROR] Failed to push to ${gid}:`, pushError.message);
+        if (snap.exists()) {
+          console.log(`[INFO] Event "${evt.title}" already sent to ${userId}, skipping`);
+          continue;
         }
-      }
 
-      // 記錄已發送
-      await sentRef.set({
-        sentAt: Date.now(),
-        eventTitle: evt.title,
-        eventStart: evt.start.toISOString()
-      });
+        // 推送到訂閱者（一對一 Push）
+        const message = buildReminderMessage(evt);
+        try {
+          await pushLineMessage(userId, { type: "text", text: message }, token);
+          console.log(`[INFO] Sent notification for "${evt.title}" to user ${userId}`);
+        } catch (pushError) {
+          console.error(`[ERROR] Failed to push to ${userId}:`, pushError.message);
+        }
+
+        // 記錄已發送
+        await sentRef.set({
+          sentAt: Date.now(),
+          eventTitle: evt.title,
+          eventStart: evt.start.toISOString()
+        });
+      }
     }
 
     console.log("[INFO] Calendar reminder job completed successfully");
