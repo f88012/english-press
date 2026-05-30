@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>單字資料庫 | Student Vocab Studio</title>
+  <meta name="theme-color" content="#23312b">
+  <style>
+    :root{
+      --ink:#17211c;--muted:#67756d;--line:#d9e1dc;--paper:#fbfaf5;--panel:#fffef9;
+      --sage:#51685c;--mint:#dfeee5;--gold:#d59d36;--red:#c95f4b;--blue:#4d72a8;
+      --green:#4f8a64;--shadow:0 18px 48px rgba(35,49,43,.12);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;background:linear-gradient(180deg,#f4f1e8 0%,#eef4ee 100%);color:var(--ink);font-family:ui-serif,Georgia,"Noto Serif TC",serif;min-height:100vh}
+    button,input,textarea,select{font:inherit}
+    button{cursor:pointer}
+    .app-shell{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh}
+    .sidebar{position:sticky;top:0;height:100vh;padding:24px 18px;background:#23312b;color:#f9f6ec;display:flex;flex-direction:column;gap:18px}
+    .brand{display:flex;align-items:center;gap:12px;padding:8px 6px 20px;border-bottom:1px solid rgba(255,255,255,.14)}
+    .mark{width:42px;height:42px;border:1px solid rgba(255,255,255,.28);border-radius:8px;display:grid;place-items:center;background:#30443a;font-weight:800}
+    .brand h1{font-size:1.05rem;line-height:1.25;margin:0}.brand small{color:#bac9bf}
+    .nav{display:grid;gap:8px}.nav button{border:0;background:transparent;color:#dfe8e1;text-align:left;padding:12px;border-radius:8px;display:flex;align-items:center;gap:10px}
+    .nav button.active,.nav button:hover{background:rgba(255,255,255,.12);color:#fff}
+    .sidebar-note{margin-top:auto;color:#bdcabe;font-size:.82rem;line-height:1.6;border-top:1px solid rgba(255,255,255,.14);padding-top:16px}
+    main{padding:28px clamp(16px,4vw,48px) 48px}
+    .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:22px}
+    .eyebrow{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);font-weight:800}
+    h2{font-size:clamp(2rem,4vw,4.2rem);line-height:.98;margin:8px 0 10px;letter-spacing:0}
+    .lead{max-width:720px;color:var(--muted);line-height:1.75;margin:0}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;min-width:300px}
+    .stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;box-shadow:0 10px 28px rgba(35,49,43,.06)}
+    .stat strong{display:block;font-size:1.6rem}.stat span{color:var(--muted);font-size:.82rem}
+    .workspace{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);gap:18px;align-items:start}
+    .panel{background:rgba(255,254,249,.92);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow)}
+    .panel-head{padding:18px 18px 0}.panel-title{margin:0;font-size:1.2rem}.panel-sub{margin:6px 0 0;color:var(--muted);font-size:.9rem;line-height:1.55}
+    .form{padding:18px;display:grid;gap:12px}.field{display:grid;gap:6px}.field label{font-size:.82rem;color:var(--sage);font-weight:800}
+    input,textarea,select{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px 13px;color:var(--ink);outline:none}
+    textarea{min-height:94px;resize:vertical;line-height:1.5} input:focus,textarea:focus,select:focus{border-color:var(--sage);box-shadow:0 0 0 3px rgba(81,104,92,.12)}
+    .row{display:grid;grid-template-columns:1fr 140px;gap:10px}.actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:8px;padding:11px 14px;font-weight:800}
+    .btn.secondary{background:#fff;color:var(--ink);border-color:var(--line)}.btn.gold{background:var(--gold);border-color:var(--gold);color:#24180a}
+    .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+    .search{max-width:360px}.seg{display:flex;background:#eef4ee;border:1px solid var(--line);border-radius:8px;padding:3px}
+    .seg button{border:0;background:transparent;border-radius:6px;padding:8px 10px;color:var(--muted);font-size:.85rem}.seg button.active{background:#fff;color:var(--ink);box-shadow:0 3px 10px rgba(0,0,0,.06)}
+    .word-list{display:grid;gap:10px;padding:14px;max-height:72vh;overflow:auto}
+    .word-card{border:1px solid var(--line);background:#fff;border-radius:8px;padding:14px;display:grid;gap:10px;position:relative}
+    .word-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:8px 0 0 8px;background:var(--green)}
+    .word-card.level-2::before{background:var(--gold)}.word-card.level-3::before{background:var(--red)}
+    .word-top{display:flex;justify-content:space-between;gap:10px;align-items:start}.word-title{font-size:1.35rem;font-weight:900}.meaning{color:var(--muted);line-height:1.55;font-size:.93rem}
+    .chips{display:flex;gap:6px;flex-wrap:wrap}.chip{font-size:.74rem;border-radius:999px;padding:4px 8px;background:#eef4ee;color:var(--sage);font-weight:800}.chip.hot{background:#fae6df;color:#a54635}.chip.mid{background:#fbefd5;color:#9a6816}
+    .mini-actions{display:flex;gap:6px;flex-wrap:wrap}.icon-btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 9px;color:var(--ink)}
+    .empty{padding:44px 18px;text-align:center;color:var(--muted);line-height:1.7}
+    .detail{display:grid;gap:14px;padding:18px}.detail-hero{border-bottom:1px solid var(--line);padding-bottom:16px}
+    .detail-word{font-size:clamp(2rem,5vw,4rem);line-height:1;font-weight:900}.detail-meaning{color:var(--muted);font-size:1.04rem;margin-top:10px}
+    .analysis-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.info{background:#f7f5ee;border:1px solid var(--line);border-radius:8px;padding:14px}
+    .info h4{margin:0 0 8px;color:var(--sage);font-size:.82rem;text-transform:uppercase;letter-spacing:.08em}.info p{margin:0;line-height:1.65;color:#344139}
+    .sentence{padding-left:18px;margin:8px 0;color:#344139;line-height:1.7}.sentence li{margin-bottom:7px}
+    .quiz-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px}.quiz-card{padding:24px}.quiz-word{font-size:clamp(2rem,5vw,4.8rem);font-weight:900;margin:14px 0 8px}
+    .options{display:grid;gap:10px;margin-top:20px}.option{border:1px solid var(--line);background:#fff;border-radius:8px;padding:14px;text-align:left;display:flex;gap:10px;align-items:center}
+    .option.correct{border-color:var(--green);background:#edf7ef}.option.wrong{border-color:var(--red);background:#fff0ed}.option.faded{opacity:.45}
+    .letter{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#eef4ee;color:var(--sage);font-weight:900;flex:none}
+    .progress{height:8px;background:#e4e9e5;border-radius:99px;overflow:hidden}.progress span{display:block;height:100%;background:var(--sage);width:0;transition:.25s}
+    .result{padding:18px;border-top:1px solid var(--line);margin-top:18px;color:var(--muted);line-height:1.7}
+    .toast{position:fixed;right:18px;bottom:18px;background:#23312b;color:#fff;padding:12px 14px;border-radius:8px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:.2s;pointer-events:none}
+    .toast.show{opacity:1;transform:none}.hide{display:none!important}
+    @media (max-width:980px){.app-shell{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.nav{grid-template-columns:repeat(3,1fr)}.workspace,.quiz-layout{grid-template-columns:1fr}.topbar{display:grid}.stats{min-width:0}.word-list{max-height:none}}
+    @media (max-width:620px){main{padding:20px 12px 34px}.stats,.analysis-grid,.row{grid-template-columns:1fr}.nav{grid-template-columns:1fr 1fr}.sidebar-note{display:none}.toolbar{align-items:stretch}.search{max-width:none;width:100%}}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">V</div>
+        <div><h1>Student Vocab Studio</h1><small>一站式單字資料庫</small></div>
+      </div>
+      <nav class="nav" aria-label="主要導覽">
+        <button class="active" data-tab="library" onclick="switchTab('library')">資料庫</button>
+        <button data-tab="quiz" onclick="switchTab('quiz')">文意測驗</button>
+        <button data-tab="review" onclick="switchTab('review')">不熟清單</button>
+      </nav>
+      <div class="sidebar-note">把一直背不起來的單字集中管理，依照不熟悉程度排序，並生成字根字首、近義字與分級例句。</div>
+    </aside>
+
+    <main>
+      <section id="libraryView">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">Personal Vocabulary Database</div>
+            <h2>把卡住的單字，整理成自己的學習地圖。</h2>
+            <p class="lead">輸入英文、中文意思與不熟悉程度。系統會用本地規則生成接近 AI 助教的字根字首拆解、近義字、初階與進階造句，並把最不熟的字排在前面。</p>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="statTotal">0</strong><span>資料庫單字</span></div>
+            <div class="stat"><strong id="statHard">0</strong><span>高度不熟</span></div>
+            <div class="stat"><strong id="statQuiz">0%</strong><span>最近測驗</span></div>
+          </div>
+        </div>
+
+        <div class="workspace">
+          <section class="panel">
+            <div class="panel-head">
+              <h3 class="panel-title">新增單字</h3>
+              <p class="panel-sub">可一次輸入多個單字，用逗號或換行分隔。中文意思可先留空，之後再編輯。</p>
+            </div>
+            <div class="form">
+              <div class="field">
+                <label for="wordInput">英文單字</label>
+                <textarea id="wordInput" placeholder="abandon&#10;fragile&#10;meticulous"></textarea>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label for="meaningInput">中文意思</label>
+                  <input id="meaningInput" placeholder="放棄；脆弱的；細心的">
+                </div>
+                <div class="field">
+                  <label for="levelInput">不熟悉程度</label>
+                  <select id="levelInput">
+                    <option value="3">紅色：很不熟</option>
+                    <option value="2">橘色：有印象</option>
+                    <option value="1">綠色：快熟了</option>
+                  </select>
+                </div>
+              </div>
+              <div class="actions">
+                <button class="btn" onclick="addWords()">加入資料庫</button>
+                <button class="btn secondary" onclick="loadSamples()">載入範例</button>
+                <button class="btn secondary" onclick="exportWords()">匯出 JSON</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="toolbar">
+              <input class="search" id="searchInput" placeholder="搜尋單字或中文意思" oninput="renderWords()">
+              <div class="seg" aria-label="排序">
+                <button class="active" id="sortLevelBtn" onclick="setSort('level')">依不熟悉</button>
+                <button id="sortAzBtn" onclick="setSort('az')">A-Z</button>
+              </div>
+            </div>
+            <div id="wordList" class="word-list"></div>
+          </section>
+        </div>
+
+        <section class="panel" style="margin-top:18px">
+          <div id="detailPane" class="detail"></div>
+        </section>
+      </section>
+
+      <section id="quizView" class="hide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">Meaning Choice Quiz</div>
+            <h2>單字文意選擇測驗</h2>
+            <p class="lead">參考原本 `index.html` 的選義測驗邏輯：抽出單字、混入三個干擾選項、回答後立即標示正解，答錯會提高不熟悉程度。</p>
+          </div>
+        </div>
+        <div class="quiz-layout">
+          <section class="panel quiz-card">
+            <div class="progress"><span id="quizProgress"></span></div>
+            <div id="quizStage"></div>
+          </section>
+          <aside class="panel">
+            <div class="panel-head">
+              <h3 class="panel-title">測驗設定</h3>
+              <p class="panel-sub">優先從紅色和橘色單字出題，適合每天短時間複習。</p>
+            </div>
+            <div class="form">
+              <div class="field">
+                <label for="quizCount">題數</label>
+                <select id="quizCount">
+                  <option value="5">5 題</option>
+                  <option value="10" selected>10 題</option>
+                  <option value="15">15 題</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="quizScope">範圍</label>
+                <select id="quizScope">
+                  <option value="priority">優先不熟單字</option>
+                  <option value="all">全部單字</option>
+                </select>
+              </div>
+              <button class="btn gold" onclick="startQuiz()">開始測驗</button>
+              <button class="btn secondary" onclick="switchTab('library')">回資料庫新增單字</button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="reviewView" class="hide">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">Weak Words</div>
+            <h2>不熟清單</h2>
+            <p class="lead">這裡只顯示紅色與橘色單字。當測驗答對時會自動降低不熟悉程度，答錯則提高。</p>
+          </div>
+        </div>
+        <section class="panel"><div id="reviewList" class="word-list"></div></section>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const STORE_KEY = 'student_vocab_database_v1';
+    const QUIZ_KEY = 'student_vocab_last_quiz_v1';
+    let words = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+    let currentSort = 'level';
+    let selectedId = words[0]?.id || null;
+    let quiz = { questions: [], index: 0, score: 0, answered: false, picked: null };
+
+    const sampleWords = [
+      { word:'abandon', meaning:'放棄；拋棄', level:3 },
+      { word:'fragile', meaning:'脆弱的；易碎的', level:2 },
+      { word:'meticulous', meaning:'一絲不苟的；非常細心的', level:3 },
+      { word:'expand', meaning:'擴大；擴展', level:1 },
+      { word:'predict', meaning:'預測；預言', level:2 },
+      { word:'transform', meaning:'轉變；改造', level:2 }
+    ];
+
+    const synonymBank = {
+      abandon:['give up','desert','leave behind'], fragile:['delicate','breakable','weak'],
+      meticulous:['careful','precise','thorough'], expand:['grow','extend','broaden'],
+      predict:['forecast','expect','anticipate'], transform:['change','convert','reshape'],
+      improve:['upgrade','enhance','refine'], reduce:['decrease','lessen','cut down'],
+      create:['make','produce','build'], important:['crucial','vital','significant']
+    };
+    const prefixHints = [
+      ['ab','away / 離開'],['pre','before / 之前'],['re','again / 再一次'],['trans','across, change / 穿越、改變'],
+      ['sub','under / 在下方'],['inter','between / 之間'],['mis','wrong / 錯誤'],['de','down, remove / 向下、移除'],
+      ['ex','out / 向外'],['in','in, not / 進入或否定'],['pro','forward / 向前'],['con','together / 一起']
+    ];
+    const suffixHints = [
+      ['tion','名詞：動作或狀態'],['ment','名詞：結果或過程'],['able','形容詞：能夠被...的'],
+      ['ful','形容詞：充滿...的'],['less','形容詞：缺少...的'],['ize','動詞：使成為'],['ous','形容詞：具有...的']
+    ];
+
+    function uid(){ return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+    function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(words)); updateStats(); }
+    function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function normalizeWord(s){ return s.trim().toLowerCase().replace(/[^a-z -]/g,''); }
+    function levelLabel(level){ return level === 3 ? '紅色：很不熟' : level === 2 ? '橘色：有印象' : '綠色：快熟了'; }
+
+    function addWords(){
+      const raw = document.getElementById('wordInput').value;
+      const meaningRaw = document.getElementById('meaningInput').value.trim();
+      const level = Number(document.getElementById('levelInput').value);
+      const entries = raw.split(/[,\n]+/).map(normalizeWord).filter(Boolean);
+      if(!entries.length){ toast('請先輸入至少一個英文單字'); return; }
+      const meanings = meaningRaw.split(/[;；,，]/).map(s => s.trim()).filter(Boolean);
+      let added = 0;
+      entries.forEach((word, i) => {
+        const existing = words.find(w => w.word === word);
+        const meaning = meanings[i] || meanings[0] || '';
+        if(existing){
+          existing.meaning = meaning || existing.meaning;
+          existing.level = Math.max(existing.level, level);
+          existing.updatedAt = Date.now();
+        }else{
+          words.push({ id: uid(), word, meaning, level, createdAt: Date.now(), updatedAt: Date.now() });
+          added++;
+        }
+      });
+      selectedId = words.find(w => w.word === entries[0])?.id || selectedId;
+      document.getElementById('wordInput').value = '';
+      document.getElementById('meaningInput').value = '';
+      save(); renderAll(); toast(added ? `已新增 ${added} 個單字` : '已更新既有單字');
+    }
+
+    function loadSamples(){
+      sampleWords.forEach(item => {
+        if(!words.some(w => w.word === item.word)) words.push({ id: uid(), ...item, createdAt: Date.now(), updatedAt: Date.now() });
+      });
+      selectedId = words[0]?.id || null; save(); renderAll(); toast('範例單字已載入');
+    }
+
+    function setSort(sort){
+      currentSort = sort;
+      document.getElementById('sortLevelBtn').classList.toggle('active', sort === 'level');
+      document.getElementById('sortAzBtn').classList.toggle('active', sort === 'az');
+      renderWords();
+    }
+
+    function getSortedWords(source = words){
+      const q = document.getElementById('searchInput')?.value.trim().toLowerCase() || '';
+      let list = source.filter(w => !q || w.word.includes(q) || (w.meaning || '').toLowerCase().includes(q));
+      if(currentSort === 'level') list.sort((a,b) => b.level - a.level || a.word.localeCompare(b.word));
+      else list.sort((a,b) => a.word.localeCompare(b.word));
+      return list;
+    }
+
+    function renderWords(){
+      const list = document.getElementById('wordList');
+      const sorted = getSortedWords();
+      if(!sorted.length){
+        list.innerHTML = '<div class="empty">目前還沒有單字。新增幾個一直背不起來的字，這裡就會變成你的專屬資料庫。</div>';
+        renderDetail(); return;
+      }
+      list.innerHTML = sorted.map(w => wordCardHtml(w)).join('');
+      if(!selectedId || !words.some(w => w.id === selectedId)) selectedId = sorted[0].id;
+      renderDetail();
+    }
+
+    function wordCardHtml(w){
+      return `<article class="word-card level-${w.level}">
+        <div class="word-top">
+          <div>
+            <div class="word-title">${esc(w.word)}</div>
+            <div class="meaning">${esc(w.meaning || '尚未填寫中文意思')}</div>
+          </div>
+          <span class="chip ${w.level===3?'hot':w.level===2?'mid':''}">${levelLabel(w.level)}</span>
+        </div>
+        <div class="mini-actions">
+          <button class="icon-btn" onclick="selectWord('${w.id}')">解析</button>
+          <button class="icon-btn" onclick="adjustLevel('${w.id}',1)">更不熟</button>
+          <button class="icon-btn" onclick="adjustLevel('${w.id}',-1)">變熟</button>
+          <button class="icon-btn" onclick="editMeaning('${w.id}')">改意思</button>
+          <button class="icon-btn" onclick="removeWord('${w.id}')">刪除</button>
+        </div>
+      </article>`;
+    }
+
+    function selectWord(id){
+      selectedId = id;
+      if(document.getElementById('libraryView').classList.contains('hide')) switchTab('library');
+      renderDetail();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function adjustLevel(id, delta){
+      const w = words.find(x => x.id === id); if(!w) return;
+      w.level = Math.max(1, Math.min(3, w.level + delta)); w.updatedAt = Date.now();
+      save(); renderAll();
+    }
+    function editMeaning(id){
+      const w = words.find(x => x.id === id); if(!w) return;
+      const next = prompt(`修改「${w.word}」的中文意思`, w.meaning || '');
+      if(next === null) return;
+      w.meaning = next.trim(); w.updatedAt = Date.now(); save(); renderAll();
+    }
+    function removeWord(id){
+      const w = words.find(x => x.id === id); if(!w || !confirm(`刪除「${w.word}」？`)) return;
+      words = words.filter(x => x.id !== id); selectedId = words[0]?.id || null; save(); renderAll();
+    }
+
+    function generateAnalysis(w){
+      const word = w.word;
+      const prefix = prefixHints.find(([p]) => word.startsWith(p));
+      const suffix = suffixHints.find(([s]) => word.endsWith(s));
+      const root = prefix || suffix
+        ? `${prefix ? `字首 ${prefix[0]} = ${prefix[1]}` : ''}${prefix && suffix ? '；' : ''}${suffix ? `字尾 ${suffix[0]} = ${suffix[1]}` : ''}`
+        : `可先把 ${word} 拆成音節或熟悉的小塊記憶，再搭配例句建立語境。`;
+      const synonyms = synonymBank[word] || inferSynonyms(word);
+      return {
+        root,
+        synonyms,
+        basic: `I need to remember the word "${word}" today.`,
+        advanced: `The word "${word}" becomes easier to use when I connect it with a clear situation instead of memorizing it alone.`
+      };
+    }
+
+    function inferSynonyms(word){
+      if(word.endsWith('ful')) return ['rich in','full of','expressive'];
+      if(word.endsWith('less')) return ['without','lacking','free from'];
+      if(word.endsWith('able')) return ['possible','capable','suitable'];
+      if(word.endsWith('tion')) return ['process','act','state'];
+      return ['related word','similar idea','near meaning'];
+    }
+
+    function renderDetail(){
+      const pane = document.getElementById('detailPane');
+      const w = words.find(x => x.id === selectedId);
+      if(!w){ pane.innerHTML = '<div class="empty">選取一個單字後，這裡會生成字根字首、近義字和分級例句。</div>'; return; }
+      const a = generateAnalysis(w);
+      pane.innerHTML = `<div class="detail-hero">
+        <div class="chips"><span class="chip ${w.level===3?'hot':w.level===2?'mid':''}">${levelLabel(w.level)}</span><span class="chip">AI 學習卡</span></div>
+        <div class="detail-word">${esc(w.word)}</div>
+        <div class="detail-meaning">${esc(w.meaning || '尚未填寫中文意思')}</div>
+      </div>
+      <div class="analysis-grid">
+        <div class="info"><h4>字根字首</h4><p>${esc(a.root)}</p></div>
+        <div class="info"><h4>近義字</h4><p>${a.synonyms.map(esc).join(' · ')}</p></div>
+      </div>
+      <div class="info"><h4>初階造句 / 進階造句</h4>
+        <ul class="sentence"><li>${esc(a.basic)}</li><li>${esc(a.advanced)}</li></ul>
+      </div>`;
+    }
+
+    function generateMeaningQuestions(selected){
+      return selected.map(w => {
+        const distractors = words
+          .filter(item => item.id !== w.id && item.meaning)
+          .sort(() => Math.random() - .5)
+          .slice(0, 3)
+          .map(item => item.meaning);
+        while(distractors.length < 3) distractors.push(['意思相近但不正確','另一個單字的意思','不符合本文的選項'][distractors.length]);
+        const options = [w.meaning || '尚未填寫中文意思', ...distractors].sort(() => Math.random() - .5);
+        return { wordId: w.id, word: w.word, meaning: w.meaning || '尚未填寫中文意思', options, answer: options.indexOf(w.meaning || '尚未填寫中文意思') };
+      });
+    }
+
+    function startQuiz(){
+      if(words.length < 4){ toast('至少需要 4 個單字才能產生選擇題'); return; }
+      const count = Number(document.getElementById('quizCount').value);
+      const scope = document.getElementById('quizScope').value;
+      const pool = [...words].sort((a,b) => scope === 'priority' ? b.level - a.level || Math.random() - .5 : Math.random() - .5).slice(0, count);
+      quiz = { questions: generateMeaningQuestions(pool), index: 0, score: 0, answered: false, picked: null };
+      renderQuiz();
+    }
+
+    function renderQuiz(){
+      const stage = document.getElementById('quizStage');
+      const progress = document.getElementById('quizProgress');
+      if(!quiz.questions.length){
+        stage.innerHTML = '<div class="empty">按下「開始測驗」後，系統會從你的資料庫產生文意選擇題。</div>';
+        progress.style.width = '0%'; return;
+      }
+      const q = quiz.questions[quiz.index];
+      progress.style.width = `${((quiz.index + (quiz.answered ? 1 : 0)) / quiz.questions.length) * 100}%`;
+      stage.innerHTML = `<div class="eyebrow">Question ${quiz.index + 1} / ${quiz.questions.length}</div>
+        <div class="quiz-word">${esc(q.word)}</div>
+        <p class="lead">請選出最適合的中文意思。</p>
+        <div class="options">
+          ${q.options.map((opt, i) => optionHtml(opt, i, q)).join('')}
+        </div>
+        ${quiz.answered ? `<div class="result"><strong>${quiz.picked === q.answer ? '答對了。' : '答錯了。'}</strong> 正確答案是「${esc(q.meaning)}」。${quiz.picked === q.answer ? '這個單字的不熟悉程度已降低。' : '這個單字已標記得更不熟。'}</div>
+        <button class="btn" style="margin-top:14px" onclick="nextQuestion()">${quiz.index < quiz.questions.length - 1 ? '下一題' : '完成測驗'}</button>` : ''}`;
+    }
+
+    function optionHtml(opt, i, q){
+      let cls = 'option';
+      if(quiz.answered){
+        if(i === q.answer) cls += ' correct';
+        else if(i === quiz.picked) cls += ' wrong';
+        else cls += ' faded';
+      }
+      return `<button class="${cls}" onclick="answerQuestion(${i})" ${quiz.answered ? 'disabled' : ''}><span class="letter">${String.fromCharCode(65+i)}</span>${esc(opt)}</button>`;
+    }
+
+    function answerQuestion(index){
+      if(quiz.answered) return;
+      quiz.answered = true; quiz.picked = index;
+      const q = quiz.questions[quiz.index];
+      const w = words.find(item => item.id === q.wordId);
+      if(index === q.answer){ quiz.score++; if(w) w.level = Math.max(1, w.level - 1); }
+      else if(w) w.level = Math.min(3, w.level + 1);
+      save(); renderQuiz();
+    }
+
+    function nextQuestion(){
+      if(quiz.index < quiz.questions.length - 1){ quiz.index++; quiz.answered = false; quiz.picked = null; renderQuiz(); return; }
+      const pct = Math.round((quiz.score / quiz.questions.length) * 100);
+      localStorage.setItem(QUIZ_KEY, String(pct));
+      document.getElementById('quizStage').innerHTML = `<div class="quiz-word">${pct}%</div><p class="lead">測驗完成：${quiz.score} / ${quiz.questions.length}。答錯的字已提高不熟悉程度，答對的字已往「快熟了」移動。</p><div class="actions" style="margin-top:18px"><button class="btn gold" onclick="startQuiz()">再測一次</button><button class="btn secondary" onclick="switchTab('review')">看不熟清單</button></div>`;
+      document.getElementById('quizProgress').style.width = '100%';
+      updateStats(); renderAll();
+    }
+
+    function renderReview(){
+      const list = document.getElementById('reviewList');
+      const reviewWords = getSortedWords(words.filter(w => w.level > 1));
+      list.innerHTML = reviewWords.length ? reviewWords.map(w => wordCardHtml(w)).join('') : '<div class="empty">目前沒有紅色或橘色單字。這是很舒服的狀態。</div>';
+    }
+
+    function switchTab(tab){
+      document.getElementById('libraryView').classList.toggle('hide', tab !== 'library');
+      document.getElementById('quizView').classList.toggle('hide', tab !== 'quiz');
+      document.getElementById('reviewView').classList.toggle('hide', tab !== 'review');
+      document.querySelectorAll('.nav button').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+      if(tab === 'quiz') renderQuiz();
+      if(tab === 'review') renderReview();
+    }
+
+    function updateStats(){
+      document.getElementById('statTotal').textContent = words.length;
+      document.getElementById('statHard').textContent = words.filter(w => w.level === 3).length;
+      document.getElementById('statQuiz').textContent = `${localStorage.getItem(QUIZ_KEY) || 0}%`;
+    }
+    function renderAll(){ renderWords(); renderReview(); updateStats(); }
+    function toast(msg){
+      const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show');
+      clearTimeout(window._toastTimer); window._toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+    function exportWords(){
+      const blob = new Blob([JSON.stringify(words, null, 2)], { type:'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'my-vocabulary-database.json'; a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    if(!words.length) loadSamples(); else renderAll();
+  </script>
+</body>
+</html>
