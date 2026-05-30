@@ -106,6 +106,23 @@
         <button data-tab="quiz" onclick="switchTab('quiz')">✏️ 文意測驗</button>
         <button data-tab="review" onclick="switchTab('review')">🔴 不熟清單</button>
       </nav>
+
+      <!-- Cloud sync -->
+      <div id="authSection" style="border-top:1px solid rgba(255,255,255,.14);padding-top:12px">
+        <div id="authLoggedOut">
+          <p style="font-size:.75rem;color:#bdcabe;margin:0 0 8px;line-height:1.5">登入後單字庫自動雲端備份，換電腦也不怕遺失。</p>
+          <button class="nav button" style="width:100%;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#f9f6ec;border-radius:8px;padding:9px 12px;text-align:left;font-size:.85rem" onclick="signInWithGoogle()">☁ Google 帳號登入同步</button>
+        </div>
+        <div id="authLoggedIn" class="hide">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <img id="userAvatar" width="28" height="28" style="border-radius:50%;flex:none" src="" alt="">
+            <span id="userName" style="font-size:.8rem;color:#f9f6ec;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span>
+          </div>
+          <div style="font-size:.73rem;color:#a8c0b0;margin-bottom:8px" id="syncStatus">本地模式</div>
+          <button style="width:100%;border:1px solid rgba(255,255,255,.18);background:transparent;color:#dfe8e1;border-radius:8px;padding:7px 10px;font-size:.8rem" onclick="doSignOut()">登出</button>
+        </div>
+      </div>
+
       <div class="sidebar-note">把一直背不起來的單字集中管理，依照不熟悉程度排序，透過例句測驗加深記憶。</div>
     </aside>
 
@@ -236,7 +253,80 @@
   </div>
   <div id="toast" class="toast"></div>
 
+  <!-- Firebase Compat v10 -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <script>
+    // ===== Firebase init =====
+    firebase.initializeApp({
+      apiKey:"AIzaSyAvr2g4M8OzdR63oElWurndcv8dE190_DU",
+      authDomain:"news-english-ef2e4.firebaseapp.com",
+      projectId:"news-english-ef2e4",
+      storageBucket:"news-english-ef2e4.firebasestorage.app",
+      messagingSenderId:"1039973180615",
+      appId:"1:1039973180615:web:26067ea33794014628cae2"
+    });
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+    let currentUser = null;
+
+    auth.onAuthStateChanged(async user => {
+      currentUser = user;
+      if(user){
+        document.getElementById('authLoggedOut').classList.add('hide');
+        document.getElementById('authLoggedIn').classList.remove('hide');
+        document.getElementById('userAvatar').src = user.photoURL || '';
+        document.getElementById('userName').textContent = user.displayName || user.email;
+        await syncFromCloud(user.uid);
+      } else {
+        document.getElementById('authLoggedOut').classList.remove('hide');
+        document.getElementById('authLoggedIn').classList.add('hide');
+        renderAll();
+      }
+    });
+
+    function signInWithGoogle(){
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(e => toast('登入失敗：' + e.message));
+    }
+    function doSignOut(){
+      auth.signOut().then(() => toast('已登出，資料保留在本機'));
+    }
+
+    async function syncFromCloud(uid){
+      const status = document.getElementById('syncStatus');
+      status.textContent = '同步中…';
+      try {
+        const doc = await db.collection('users').doc(uid).get();
+        if(doc.exists && doc.data().studentVocab?.length){
+          words = doc.data().studentVocab;
+          localStorage.setItem(STORE_KEY, JSON.stringify(words));
+          status.textContent = `☁ 已同步（${words.length} 個單字）`;
+        } else {
+          // 新帳號或雲端空白 → 上傳本機資料
+          await saveToCloud();
+          status.textContent = `☁ 本機資料已上傳（${words.length} 個單字）`;
+        }
+      } catch(e){
+        status.textContent = '⚠ 同步失敗（使用本機）';
+        console.error(e);
+      }
+      renderAll();
+    }
+
+    async function saveToCloud(){
+      if(!currentUser) return;
+      try {
+        await db.collection('users').doc(currentUser.uid).set({ studentVocab: words }, { merge:true });
+        document.getElementById('syncStatus').textContent = `☁ 已同步（${words.length} 個單字）`;
+      } catch(e){
+        console.error('Cloud save failed:', e);
+      }
+    }
+
+    // ===== App constants =====
     const STORE_KEY = 'student_vocab_database_v1';
     const QUIZ_KEY = 'student_vocab_last_quiz_v1';
     const EX_CACHE = 'svo_ex_';
@@ -267,7 +357,7 @@
     ];
 
     function uid(){ return Math.random().toString(36).slice(2) + Date.now().toString(36); }
-    function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(words)); updateStats(); }
+    function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(words)); updateStats(); saveToCloud(); }
     function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
     function normalizeWord(s){ return s.trim().toLowerCase().replace(/[^a-z -]/g,''); }
     function levelLabel(l){ return l === 3 ? '🔴 很不熟' : l === 2 ? '🟠 有印象' : '🟢 快熟了'; }
