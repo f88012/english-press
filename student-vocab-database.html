@@ -331,7 +331,9 @@
     const QUIZ_KEY = 'student_vocab_last_quiz_v1';
     const EX_CACHE = 'svo_ex_';
     const DEFINITION_URL = 'https://generateworddefinition-gtlccx6nka-uc.a.run.app';
-    const EXAMPLE_URL = 'https://generatewordexample-gtlccx6nka-uc.a.run.app';
+    const EXAMPLE_URL   = 'https://generatewordexample-gtlccx6nka-uc.a.run.app';
+    const ETYM_URL      = 'https://generatewordetymology-gtlccx6nka-uc.a.run.app';
+    const ETYM_CACHE    = 'vocab_etym_';
 
     let words = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
     let currentSort = 'level';
@@ -517,19 +519,43 @@
         return;
       }
       const a = generateAnalysis(w);
-      const exKey = EX_CACHE + w.word;
-      const cachedEx = localStorage.getItem(exKey);
+
+      // Etymology (AI cache)
+      let etymHtml = '';
+      const cachedEtym = localStorage.getItem(ETYM_CACHE + w.word);
+      if(cachedEtym){
+        try {
+          const et = JSON.parse(cachedEtym);
+          const partsHtml = (et.parts || []).map(p =>
+            `<p style="margin:0 0 4px"><strong>${esc(p.part)}</strong> = ${esc(p.meaning)}
+            <span style="font-size:.78rem;color:var(--muted)">（${esc(p.origin)}）</span></p>`
+          ).join('');
+          const cognatesHtml = et.cognates?.length
+            ? `<p style="margin-top:6px;font-size:.8rem;color:var(--muted)">同根字：${et.cognates.map(esc).join(' · ')}</p>` : '';
+          const etymExp = et.etymology
+            ? `<p style="margin-top:6px;font-size:.82rem;color:var(--muted)">${esc(et.etymology)}</p>` : '';
+          etymHtml = `<div class="info"><h4>🌱 字根字首（AI）</h4>${partsHtml}${etymExp}${cognatesHtml}</div>`;
+        } catch(e){ etymHtml = ''; }
+      }
+      if(!etymHtml){
+        // fallback: static analysis
+        etymHtml = `<div class="info"><h4>字根字首</h4><p>${esc(a.root)}</p></div>`;
+      }
+
+      // Example sentence (AI cache)
       let exHtml = '';
+      const cachedEx = localStorage.getItem(EX_CACHE + w.word);
       if(cachedEx){
         try {
           const ex = JSON.parse(cachedEx);
           exHtml = `<div class="info" style="grid-column:1/-1">
-            <h4>AI 例句</h4>
+            <h4>💬 AI 例句</h4>
             <p style="font-style:italic">${esc(ex.sentence)}</p>
-            <p style="margin-top:6px;font-size:.82rem;color:var(--muted)">${esc(ex.translation)}</p>
+            <p style="margin-top:5px;font-size:.82rem;color:var(--muted)">${esc(ex.translation)}</p>
           </div>`;
         } catch(e){}
       }
+
       pane.innerHTML = `<div class="detail">
         <div class="detail-hero">
           <div class="chips"><span class="chip ${w.level===3?'hot':w.level===2?'mid':''}">${levelLabel(w.level)}</span>${w.pos?`<span class="chip">${esc(w.pos)}</span>`:''}</div>
@@ -537,12 +563,38 @@
           <div class="detail-meaning">${esc(w.meaning || '尚未填寫中文意思')}</div>
         </div>
         <div class="analysis-grid">
-          <div class="info"><h4>字根字首</h4><p>${esc(a.root)}</p></div>
+          ${etymHtml}
           <div class="info"><h4>近義字</h4><p>${a.synonyms.map(esc).join(' · ')}</p></div>
           ${exHtml}
         </div>
-        <button class="btn secondary sm" onclick="fetchAndShowExample('${w.id}')" style="margin-top:2px">🔄 生成 AI 例句</button>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn secondary sm" id="etymBtn" onclick="fetchAndShowEtymology('${w.id}')">🌱 ${cachedEtym ? '重新生成' : '生成'}字根分析</button>
+          <button class="btn secondary sm" id="exBtn" onclick="fetchAndShowExample('${w.id}')">🔄 ${cachedEx ? '重新生成' : '生成'} AI 例句</button>
+        </div>
       </div>`;
+    }
+
+    async function fetchAndShowEtymology(id){
+      const w = words.find(x => x.id === id); if(!w) return;
+      const btn = document.getElementById('etymBtn');
+      if(btn){ btn.disabled = true; btn.textContent = '生成中…'; }
+      try {
+        const res = await fetch(ETYM_URL, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({word: w.word, pos: w.pos || '', zh: w.meaning || ''})
+        });
+        const data = await res.json();
+        if(data.parts){
+          localStorage.setItem(ETYM_CACHE + w.word, JSON.stringify(data));
+          renderDetail();
+        } else {
+          toast('字根分析失敗，請稍後再試');
+          if(btn){ btn.disabled = false; btn.textContent = '🌱 生成字根分析'; }
+        }
+      } catch(e) {
+        toast('網路錯誤，請確認連線後再試');
+        if(btn){ btn.disabled = false; btn.textContent = '🌱 生成字根分析'; }
+      }
     }
 
     async function fetchAndShowExample(id){
